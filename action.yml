@@ -163,7 +163,7 @@ runs:
     - name: Check release notes
       id: release-notes
       if: inputs.check-release-notes == 'true'
-      uses: AbsaOSS/release-notes-presence-check@v1
+      uses: AbsaOSS/release-notes-presence-check@8e586b26a5e27f899ee8590a5d988fd4780a3dbf # v0.4.0
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
       with:

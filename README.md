@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check PR requirements
-        uses: <owner>/check-pr-requirements@v1
+        uses: AbsaOSS/check-pr-requirements@v1
         with:
           pr-title: ${{ github.event.pull_request.title }}
           pr-body: ${{ github.event.pull_request.body }}
@@ -49,7 +49,7 @@ jobs:
 Only check what you need:
 
 ```yaml
-- uses: <owner>/check-pr-requirements@v1
+- uses: AbsaOSS/check-pr-requirements@v1
   with:
     pr-title: ${{ github.event.pull_request.title }}
     check-title: "true"
