@@ -42,4 +42,22 @@ INPUT_PR_TITLE="" INPUT_PR_BODY="" \
 INPUT_PR_TITLE="add feature" INPUT_PR_BODY="This is about numbers like 42" \
     assert_fail "number without hash" "$CHECK"
 
+# ── Edge cases ───────────────────────────────────────────────────────────────
+
+INPUT_PR_TITLE="" \
+INPUT_PR_BODY="$(printf 'First line\nFixes #42\nLast line')" \
+    assert_pass "issue ref on middle line" "$CHECK"
+
+INPUT_PR_TITLE="feat: add feature" \
+INPUT_PR_BODY="Ref #0" \
+    assert_pass "issue number zero" "$CHECK"
+
+INPUT_PR_TITLE="" \
+INPUT_PR_BODY="fixed #42" \
+    assert_pass "fixed keyword" "$CHECK"
+
+INPUT_PR_TITLE="" \
+INPUT_PR_BODY="closed #42" \
+    assert_pass "closed keyword" "$CHECK"
+
 print_results "issue_reference" || exit 1

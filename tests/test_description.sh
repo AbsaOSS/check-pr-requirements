@@ -35,4 +35,22 @@ INPUT_DESCRIPTION_MIN_LENGTH="" \
 INPUT_PR_BODY="   " \
     assert_fail "whitespace only" "$CHECK"
 
+# ── Edge cases ───────────────────────────────────────────────────────────────
+
+INPUT_DESCRIPTION_MIN_LENGTH="" \
+INPUT_PR_BODY="$(printf '\n\n\n\n')" \
+    assert_fail "only newlines" "$CHECK"
+
+INPUT_DESCRIPTION_MIN_LENGTH="" \
+INPUT_PR_BODY="$(printf '\n\n\nActual content here that is long enough\n\n')" \
+    assert_pass "content with surrounding newlines" "$CHECK"
+
+INPUT_DESCRIPTION_MIN_LENGTH="" \
+INPUT_PR_BODY="This has pipes | in | it and that is fine for description" \
+    assert_pass "body with pipe characters" "$CHECK"
+
+INPUT_DESCRIPTION_MIN_LENGTH="1" \
+INPUT_PR_BODY="x" \
+    assert_pass "minimum length of 1" "$CHECK"
+
 print_results "description" || exit 1

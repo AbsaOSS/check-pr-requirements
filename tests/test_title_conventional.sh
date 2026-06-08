@@ -37,6 +37,15 @@ CASES=(
     "pass|fix in custom types|fix: something|fix,docs|"
     "pass|docs in custom types|docs: something|fix,docs|"
 
+    # Regex metacharacters in types/scopes
+    "fail|type with regex dot|feat: something|fe.t|"
+    "fail|type with regex star|feat: something|feat.*|"
+    "pass|legit type not affected by escaping|feat: something|feat|"
+
+    # Special characters in title
+    "pass|title with unicode emoji|feat: add login page||"
+    "pass|title with backticks|feat: add \`foo\` helper||"
+
     # Custom scopes
     "pass|scope in allowed list|feat(api): something||api,web"
     "fail|scope not in allowed list|feat(db): something||api,web"

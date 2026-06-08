@@ -10,11 +10,11 @@ _run_script() {
     for v in $(compgen -v INPUT_); do
         env_args+=("$v=${!v}")
     done
-    if [[ ${#env_args[@]} -gt 0 ]]; then
-        env "${env_args[@]}" bash "$script" 2>&1
-    else
+    # Run with clean INPUT_ env: only vars from this test case, not leaked from prior ones
+    env -i "${env_args[@]}" PATH="$PATH" HOME="$HOME" \
+        GITHUB_STEP_SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/null}" \
+        GITHUB_OUTPUT="${GITHUB_OUTPUT:-/dev/null}" \
         bash "$script" 2>&1
-    fi
 }
 
 assert_pass() {
