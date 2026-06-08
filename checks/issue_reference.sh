@@ -15,7 +15,7 @@ GITHUB_PATTERN="${GITHUB_KEYWORDS}[[:space:]]+#[0-9]+"
 HASH_PATTERN="#[0-9]+"
 URL_PATTERN="https?://github\.com/[^/]+/[^/]+/issues/[0-9]+"
 
-if echo "$COMBINED" | grep -qiP "$GITHUB_PATTERN"; then
+if echo "$COMBINED" | grep -qiE "$GITHUB_PATTERN"; then
     echo "pass"
     exit 0
 fi

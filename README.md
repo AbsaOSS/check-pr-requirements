@@ -79,7 +79,7 @@ Only check what you need:
 | `title-types` | `feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert` | Allowed conventional commit types |
 | `title-scopes` | *(empty = any)* | Allowed scopes |
 | `description-min-length` | `20` | Minimum description character count |
-| `branch-pattern` | `^(feature\|bugfix\|hotfix\|release\|chore\|docs\|ci\|dependabot)/[a-zA-Z0-9._-]+$` | Branch name regex |
+| `branch-pattern` | `^(feature|bugfix|hotfix|release|chore|docs|ci|dependabot)/[a-zA-Z0-9._-]+$` | Branch name regex |
 | `max-files-changed` | `50` | Maximum files changed |
 | `required-labels` | *(empty = any label)* | Required label names |
 | `allowed-target-branches` | `main,master` | Allowed target branches |
