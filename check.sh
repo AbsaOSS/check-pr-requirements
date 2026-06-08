@@ -4,6 +4,16 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHECKS_DIR="${SCRIPT_DIR}/checks"
 
+set_output() {
+    local name="$1" value="$2"
+    local delimiter="ghadelimiter_$(date +%s%N)"
+    {
+        echo "${name}<<${delimiter}"
+        echo "${value}"
+        echo "${delimiter}"
+    } >> "${GITHUB_OUTPUT:-/dev/null}"
+}
+
 # ── Check Registry ──────────────────────────────────────────────────────────
 # Format: "env_toggle|default|display_name|script_name"
 # To add a new check: append an entry here and create the script in checks/
@@ -74,7 +84,7 @@ TOTAL=$((PASS_COUNT + FAIL_COUNT))
         if [[ "${CHECK_RESULTS[$i]}" == "pass" ]]; then
             echo "| ${CHECK_NAMES[$i]} | ✅ Pass | - |"
         else
-            detail=$(echo "${CHECK_MESSAGES[$i]}" | sed 's/^fail: //')
+            detail=$(echo "${CHECK_MESSAGES[$i]}" | sed 's/^fail: //' | tr '\n' ' ' | sed 's/|/\\|/g')
             echo "| ${CHECK_NAMES[$i]} | ❌ Fail | ${detail} |"
         fi
     done
@@ -83,12 +93,11 @@ TOTAL=$((PASS_COUNT + FAIL_COUNT))
     echo "**Result:** ${PASS_COUNT}/${TOTAL} checks passed"
 } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
 
-{
-    echo "result=$(if [[ "$FAIL_COUNT" -eq 0 ]]; then echo "pass"; else echo "fail"; fi)"
-    echo "pass-count=${PASS_COUNT}"
-    echo "fail-count=${FAIL_COUNT}"
-    echo "total-count=${TOTAL}"
-} >> "${GITHUB_OUTPUT:-/dev/null}"
+RESULT=$(if [[ "$FAIL_COUNT" -eq 0 ]]; then echo "pass"; else echo "fail"; fi)
+set_output "result" "$RESULT"
+set_output "pass-count" "$PASS_COUNT"
+set_output "fail-count" "$FAIL_COUNT"
+set_output "total-count" "$TOTAL"
 
 # CLI output
 echo ""
