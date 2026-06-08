@@ -1,0 +1,200 @@
+name: "Check PR Requirements"
+description: "Validates pull request properties against configurable requirements"
+author: "Oto Macenauer"
+
+branding:
+  icon: "check-circle"
+  color: "green"
+
+inputs:
+  # PR data
+  pr-title:
+    description: "Pull request title"
+    required: true
+  pr-body:
+    description: "Pull request body/description"
+    required: false
+    default: ""
+  pr-branch:
+    description: "Source branch name"
+    required: false
+    default: ""
+  pr-number:
+    description: "Pull request number"
+    required: false
+    default: ""
+  target-branch:
+    description: "Target branch name"
+    required: false
+    default: ""
+  files-changed:
+    description: "Number of files changed"
+    required: false
+    default: "0"
+  labels:
+    description: "Comma-separated list of PR labels"
+    required: false
+    default: ""
+  github-token:
+    description: "GitHub token for API access (required for release notes check)"
+    required: false
+    default: ""
+
+  # Check toggles
+  check-title:
+    description: "Enable conventional commits title check"
+    required: false
+    default: "true"
+  check-description:
+    description: "Enable PR description presence check"
+    required: false
+    default: "true"
+  check-issue-reference:
+    description: "Enable issue reference check"
+    required: false
+    default: "true"
+  check-release-notes:
+    description: "Enable release notes presence check (uses AbsaOSS/release-notes-presence-check)"
+    required: false
+    default: "false"
+  check-branch-name:
+    description: "Enable branch name convention check"
+    required: false
+    default: "false"
+  check-pr-size:
+    description: "Enable PR size limit check"
+    required: false
+    default: "false"
+  check-label:
+    description: "Enable label presence check"
+    required: false
+    default: "false"
+  check-target-branch:
+    description: "Enable target branch validation"
+    required: false
+    default: "false"
+
+  # Check configuration
+  title-types:
+    description: "Comma-separated allowed conventional commit types"
+    required: false
+    default: "feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert"
+  title-scopes:
+    description: "Comma-separated allowed scopes (empty = any scope allowed)"
+    required: false
+    default: ""
+  description-min-length:
+    description: "Minimum PR description length in characters"
+    required: false
+    default: "20"
+  branch-pattern:
+    description: "Regex pattern for valid branch names"
+    required: false
+    default: "^(feature|bugfix|hotfix|release|chore|docs|ci|dependabot)/[a-zA-Z0-9._-]+$"
+  max-files-changed:
+    description: "Maximum number of files changed allowed"
+    required: false
+    default: "50"
+  required-labels:
+    description: "Comma-separated list of required labels (empty = at least one label)"
+    required: false
+    default: ""
+  allowed-target-branches:
+    description: "Comma-separated list of allowed target branches"
+    required: false
+    default: "main,master"
+  release-notes-tag:
+    description: "Tag to look for in PR body for release notes"
+    required: false
+    default: "## [Rr]elease [Nn]otes"
+  release-notes-skip-labels:
+    description: "Labels that skip the release notes check"
+    required: false
+    default: "no RN"
+  release-notes-skip-placeholders:
+    description: "Placeholder strings that indicate missing release notes"
+    required: false
+    default: "TBD"
+
+outputs:
+  result:
+    description: "Overall result: pass or fail"
+    value: ${{ steps.evaluate.outputs.result }}
+  pass-count:
+    description: "Number of checks that passed"
+    value: ${{ steps.checks.outputs.pass-count }}
+  fail-count:
+    description: "Number of checks that failed"
+    value: ${{ steps.checks.outputs.fail-count }}
+  total-count:
+    description: "Total number of checks run"
+    value: ${{ steps.checks.outputs.total-count }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run PR checks
+      id: checks
+      continue-on-error: true
+      shell: bash
+      env:
+        INPUT_PR_TITLE: ${{ inputs.pr-title }}
+        INPUT_PR_BODY: ${{ inputs.pr-body }}
+        INPUT_PR_BRANCH: ${{ inputs.pr-branch }}
+        INPUT_TARGET_BRANCH: ${{ inputs.target-branch }}
+        INPUT_FILES_CHANGED: ${{ inputs.files-changed }}
+        INPUT_LABELS: ${{ inputs.labels }}
+        INPUT_CHECK_TITLE: ${{ inputs.check-title }}
+        INPUT_CHECK_DESCRIPTION: ${{ inputs.check-description }}
+        INPUT_CHECK_ISSUE_REFERENCE: ${{ inputs.check-issue-reference }}
+        INPUT_CHECK_BRANCH_NAME: ${{ inputs.check-branch-name }}
+        INPUT_CHECK_PR_SIZE: ${{ inputs.check-pr-size }}
+        INPUT_CHECK_LABEL: ${{ inputs.check-label }}
+        INPUT_CHECK_TARGET_BRANCH: ${{ inputs.check-target-branch }}
+        INPUT_TITLE_TYPES: ${{ inputs.title-types }}
+        INPUT_TITLE_SCOPES: ${{ inputs.title-scopes }}
+        INPUT_DESCRIPTION_MIN_LENGTH: ${{ inputs.description-min-length }}
+        INPUT_BRANCH_PATTERN: ${{ inputs.branch-pattern }}
+        INPUT_MAX_FILES_CHANGED: ${{ inputs.max-files-changed }}
+        INPUT_REQUIRED_LABELS: ${{ inputs.required-labels }}
+        INPUT_ALLOWED_TARGET_BRANCHES: ${{ inputs.allowed-target-branches }}
+      run: bash "${{ github.action_path }}/check.sh"
+
+    - name: Check release notes
+      id: release-notes
+      if: inputs.check-release-notes == 'true'
+      uses: AbsaOSS/release-notes-presence-check@v1
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      with:
+        github-repository: ${{ github.repository }}
+        pr-number: ${{ inputs.pr-number || github.event.pull_request.number }}
+        title: ${{ inputs.release-notes-tag }}
+        skip-labels: ${{ inputs.release-notes-skip-labels }}
+        skip-placeholders: ${{ inputs.release-notes-skip-placeholders }}
+
+    - name: Evaluate results
+      id: evaluate
+      shell: bash
+      run: |
+        FAILED=0
+
+        if [[ "${{ steps.checks.outcome }}" == "failure" ]]; then
+          FAILED=1
+        fi
+
+        if [[ "${{ inputs.check-release-notes }}" == "true" && "${{ steps.release-notes.outcome }}" == "failure" ]]; then
+          FAILED=1
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Release Notes | ❌ Fail | Release notes section missing or empty |" >> "$GITHUB_STEP_SUMMARY"
+        elif [[ "${{ inputs.check-release-notes }}" == "true" && "${{ steps.release-notes.outcome }}" == "success" ]]; then
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Release Notes | ✅ Pass | - |" >> "$GITHUB_STEP_SUMMARY"
+        fi
+
+        if [[ "$FAILED" -eq 1 ]]; then
+          echo "result=fail" >> "$GITHUB_OUTPUT"
+          exit 1
+        fi
+
+        echo "result=pass" >> "$GITHUB_OUTPUT"

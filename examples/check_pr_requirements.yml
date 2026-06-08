@@ -1,0 +1,41 @@
+name: Check PR Requirements
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+    branches: [main, master]
+
+jobs:
+  check-pr:
+    name: PR Requirements
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR requirements
+        uses: <owner>/check-pr-requirements@v1
+        with:
+          pr-title: ${{ github.event.pull_request.title }}
+          pr-body: ${{ github.event.pull_request.body }}
+          pr-branch: ${{ github.event.pull_request.head.ref }}
+          pr-number: ${{ github.event.pull_request.number }}
+          target-branch: ${{ github.event.pull_request.base.ref }}
+          files-changed: ${{ github.event.pull_request.changed_files }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+          # Enable/disable checks
+          check-title: "true"
+          check-description: "true"
+          check-issue-reference: "true"
+          check-release-notes: "true"
+          check-branch-name: "true"
+          check-pr-size: "true"
+          check-label: "false"
+          check-target-branch: "true"
+
+          # Configuration
+          title-types: "feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert"
+          description-min-length: "20"
+          max-files-changed: "50"
+          branch-pattern: "^(feature|bugfix|hotfix|release|chore|docs|ci|dependabot)/[a-zA-Z0-9._-]+$"
+          allowed-target-branches: "main,master"
+          release-notes-tag: "## [Rr]elease [Nn]otes"
+          release-notes-skip-labels: "no RN"

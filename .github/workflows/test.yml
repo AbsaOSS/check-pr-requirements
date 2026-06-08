@@ -1,0 +1,103 @@
+name: Test
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run unit tests
+        run: bash tests/run_tests.sh
+
+  integration-test-pass:
+    name: Integration - All Pass
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run action (should pass)
+        uses: ./
+        with:
+          pr-title: "feat(auth): add OAuth2 login"
+          pr-body: "This PR adds OAuth2 login support. Fixes #42"
+          pr-branch: "feature/oauth2-login"
+          target-branch: "main"
+          files-changed: "5"
+          labels: "enhancement"
+          check-title: "true"
+          check-description: "true"
+          check-issue-reference: "true"
+          check-branch-name: "true"
+          check-pr-size: "true"
+          check-label: "true"
+          check-target-branch: "true"
+          check-release-notes: "false"
+
+  integration-test-title-fail:
+    name: Integration - Title Fail
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run action (should fail)
+        id: check
+        uses: ./
+        continue-on-error: true
+        with:
+          pr-title: "Update login page"
+          pr-body: "This PR updates the login page. See #10"
+          check-title: "true"
+          check-description: "true"
+          check-issue-reference: "true"
+          check-release-notes: "false"
+
+      - name: Verify failure
+        if: steps.check.outcome != 'failure'
+        run: |
+          echo "Expected action to fail but it passed"
+          exit 1
+
+  integration-test-minimal:
+    name: Integration - Minimal Config
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run with only title check
+        uses: ./
+        with:
+          pr-title: "fix: resolve crash on startup"
+          check-title: "true"
+          check-description: "false"
+          check-issue-reference: "false"
+          check-release-notes: "false"
+
+  integration-test-all-disabled:
+    name: Integration - All Disabled
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run with all checks disabled
+        uses: ./
+        with:
+          pr-title: "anything goes"
+          check-title: "false"
+          check-description: "false"
+          check-issue-reference: "false"
+          check-release-notes: "false"

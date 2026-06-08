@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/test_helpers.sh"
+CHECK="${SCRIPT_DIR}/../checks/description.sh"
+
+# ── Pass cases ───────────────────────────────────────────────────────────────
+
+INPUT_DESCRIPTION_MIN_LENGTH="" \
+INPUT_PR_BODY="This is a valid PR description with enough content." \
+    assert_pass "valid description" "$CHECK"
+
+INPUT_PR_BODY="Short but enough text here" INPUT_DESCRIPTION_MIN_LENGTH="10" \
+    assert_pass "meets custom min length" "$CHECK"
+
+INPUT_DESCRIPTION_MIN_LENGTH="" \
+INPUT_PR_BODY="$(printf '%0.s-' {1..100})" \
+    assert_pass "long description" "$CHECK"
+
+# ── Fail cases ───────────────────────────────────────────────────────────────
+
+INPUT_DESCRIPTION_MIN_LENGTH="" \
+INPUT_PR_BODY="" \
+    assert_fail "empty body" "$CHECK"
+
+INPUT_DESCRIPTION_MIN_LENGTH="" \
+INPUT_PR_BODY="Too short" \
+    assert_fail "below default min length" "$CHECK"
+
+INPUT_PR_BODY="abc" INPUT_DESCRIPTION_MIN_LENGTH="10" \
+    assert_fail "below custom min length" "$CHECK"
+
+INPUT_DESCRIPTION_MIN_LENGTH="" \
+INPUT_PR_BODY="   " \
+    assert_fail "whitespace only" "$CHECK"
+
+print_results "description" || exit 1
