@@ -6,7 +6,11 @@ CHECKS_DIR="${SCRIPT_DIR}/checks"
 
 set_output() {
     local name="$1" value="$2"
-    local delimiter="ghadelimiter_$(date +%s%N)"
+    local delimiter="ghadelimiter_${RANDOM}${RANDOM}${RANDOM}"
+    # Regenerate on the off chance the value contains the delimiter line
+    while [[ "$value" == *"$delimiter"* ]]; do
+        delimiter="ghadelimiter_${RANDOM}${RANDOM}${RANDOM}"
+    done
     {
         echo "${name}<<${delimiter}"
         echo "${value}"
@@ -84,7 +88,15 @@ TOTAL=$((PASS_COUNT + FAIL_COUNT))
         if [[ "${CHECK_RESULTS[$i]}" == "pass" ]]; then
             echo "| ${CHECK_NAMES[$i]} | ✅ Pass | - |"
         else
-            detail=$(echo "${CHECK_MESSAGES[$i]}" | sed 's/^fail: //' | tr '\n' ' ' | sed 's/|/\\|/g')
+            # Render PR-controlled text as an inert code span: strip backticks,
+            # flatten newlines, escape table pipes
+            detail="${CHECK_MESSAGES[$i]#fail: }"
+            detail=$(printf '%s' "$detail" | tr '\n' ' ' | tr -d '`' | sed 's/|/\\|/g')
+            if [[ -z "$detail" ]]; then
+                detail="-"
+            else
+                detail="\`${detail}\`"
+            fi
             echo "| ${CHECK_NAMES[$i]} | ❌ Fail | ${detail} |"
         fi
     done
@@ -93,7 +105,11 @@ TOTAL=$((PASS_COUNT + FAIL_COUNT))
     echo "**Result:** ${PASS_COUNT}/${TOTAL} checks passed"
 } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
 
-RESULT=$(if [[ "$FAIL_COUNT" -eq 0 ]]; then echo "pass"; else echo "fail"; fi)
+if [[ "$FAIL_COUNT" -eq 0 ]]; then
+    RESULT="pass"
+else
+    RESULT="fail"
+fi
 set_output "result" "$RESULT"
 set_output "pass-count" "$PASS_COUNT"
 set_output "fail-count" "$FAIL_COUNT"
