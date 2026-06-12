@@ -50,6 +50,9 @@ CASES=(
     "pass|scope in allowed list|feat(api): something||api,web"
     "fail|scope not in allowed list|feat(db): something||api,web"
     "pass|no scope when scopes restricted|feat: something||api,web"
+    "pass|types list with whitespace|fix: something|fix, docs|"
+    "pass|scopes list with whitespace|feat(web): something||api, web"
+    "fail|empty scope parens|feat(): something||"
 )
 
 # ── Runner ───────────────────────────────────────────────────────────────────
