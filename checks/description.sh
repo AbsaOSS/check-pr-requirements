@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Validates PR description presence and minimum length.
+# Validates PR description presence, minimum length, and required sections.
 # Inputs via env vars:
-#   INPUT_PR_BODY               - PR body to check (required)
-#   INPUT_DESCRIPTION_MIN_LENGTH - Minimum character count (default: 20)
+#   INPUT_PR_BODY                       - PR body to check (required)
+#   INPUT_DESCRIPTION_MIN_LENGTH        - Minimum character count (default: 20)
+#   INPUT_DESCRIPTION_REQUIRED_SECTIONS - Comma-separated headings that must
+#                                         appear in the body (empty = none)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib.sh"
@@ -30,6 +32,21 @@ LENGTH=${#STRIPPED}
 if [[ "$LENGTH" -lt "$MIN_LENGTH" ]]; then
     echo "fail: PR description too short ($LENGTH chars, minimum $MIN_LENGTH)"
     exit 1
+fi
+
+REQUIRED_SECTIONS="${INPUT_DESCRIPTION_REQUIRED_SECTIONS:-}"
+if [[ -n "$REQUIRED_SECTIONS" ]]; then
+    split_csv "$REQUIRED_SECTIONS"
+    MISSING_SECTIONS=()
+    for section in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
+        if ! printf '%s\n' "$BODY" | grep -qF "$section"; then
+            MISSING_SECTIONS+=("$section")
+        fi
+    done
+    if [[ ${#MISSING_SECTIONS[@]} -gt 0 ]]; then
+        echo "fail: PR description missing required sections: ${MISSING_SECTIONS[*]}"
+        exit 1
+    fi
 fi
 
 echo "pass"

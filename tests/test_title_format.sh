@@ -3,7 +3,7 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/test_helpers.sh"
-CHECK="${SCRIPT_DIR}/../checks/title_conventional.sh"
+CHECK="${SCRIPT_DIR}/../checks/title_format.sh"
 
 # ── Test Cases ───────────────────────────────────────────────────────────────
 # Format: expected|description|title|types_override|scopes_override
@@ -68,4 +68,45 @@ for case_entry in "${CASES[@]}"; do
     fi
 done
 
-print_results "title_conventional" || exit 1
+# ── Title formats ────────────────────────────────────────────────────────────
+
+INPUT_TITLE_FORMATS="issue-number" INPUT_PR_TITLE="#123: Fix login error" \
+    assert_pass "issue-number hash format" "$CHECK"
+
+INPUT_TITLE_FORMATS="issue-number" INPUT_PR_TITLE="123 - Fix login error" \
+    assert_pass "issue-number dash format" "$CHECK"
+
+INPUT_TITLE_FORMATS="issue-number" INPUT_PR_TITLE="feat: add login" \
+    assert_fail "conventional title rejected by issue-number format" "$CHECK"
+
+INPUT_TITLE_FORMATS="issue-number" INPUT_PR_TITLE="#123:no space" \
+    assert_fail "issue-number without space after colon" "$CHECK"
+
+INPUT_TITLE_FORMATS="conventional,issue-number" INPUT_PR_TITLE="#123: Fix login" \
+    assert_pass "multi-format: issue-number side matches" "$CHECK"
+
+INPUT_TITLE_FORMATS="conventional,issue-number" INPUT_PR_TITLE="feat: add login" \
+    assert_pass "multi-format: conventional side matches" "$CHECK"
+
+INPUT_TITLE_FORMATS="conventional,issue-number" INPUT_PR_TITLE="random title" \
+    assert_fail "multi-format: neither matches" "$CHECK"
+
+INPUT_TITLE_FORMATS="custom" INPUT_TITLE_PATTERN="^JIRA-[0-9]+ .+" \
+INPUT_PR_TITLE="JIRA-42 fix the thing" \
+    assert_pass "custom pattern matches" "$CHECK"
+
+INPUT_TITLE_FORMATS="custom" INPUT_TITLE_PATTERN="^JIRA-[0-9]+ .+" \
+INPUT_PR_TITLE="fix the thing" \
+    assert_fail "custom pattern does not match" "$CHECK"
+
+INPUT_TITLE_FORMATS="custom" INPUT_TITLE_PATTERN="" \
+INPUT_PR_TITLE="anything" \
+    assert_fail "custom format without title-pattern" "$CHECK"
+
+INPUT_TITLE_FORMATS="bogus" INPUT_PR_TITLE="feat: add login" \
+    assert_fail "unknown format name" "$CHECK"
+
+INPUT_TITLE_FORMATS="" INPUT_PR_TITLE="feat: add login" \
+    assert_pass "empty formats falls back to conventional default" "$CHECK"
+
+print_results "title_format" || exit 1

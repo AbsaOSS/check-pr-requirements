@@ -61,4 +61,21 @@ INPUT_DESCRIPTION_MIN_LENGTH="6" \
 INPUT_PR_BODY="$(printf '\n\n\nshort\n\n')" \
     assert_fail "surrounding newlines do not count toward length" "$CHECK"
 
+# ── Required sections ────────────────────────────────────────────────────────
+
+INPUT_DESCRIPTION_MIN_LENGTH="" \
+INPUT_DESCRIPTION_REQUIRED_SECTIONS="## Overview,## Release Notes" \
+INPUT_PR_BODY="$(printf '## Overview\nSome change description here\n## Release Notes\n- Fixed a thing')" \
+    assert_pass "all required sections present" "$CHECK"
+
+INPUT_DESCRIPTION_MIN_LENGTH="" \
+INPUT_DESCRIPTION_REQUIRED_SECTIONS="## Overview,## Release Notes" \
+INPUT_PR_BODY="$(printf '## Overview\nSome change description, no release notes section')" \
+    assert_fail "missing one required section" "$CHECK"
+
+INPUT_DESCRIPTION_MIN_LENGTH="" \
+INPUT_DESCRIPTION_REQUIRED_SECTIONS="" \
+INPUT_PR_BODY="Long enough body without any sections at all" \
+    assert_pass "no sections required" "$CHECK"
+
 print_results "description" || exit 1

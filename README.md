@@ -6,9 +6,9 @@ A configurable GitHub Action that validates pull request properties against a se
 
 | Check | Default | Description |
 |-------|---------|-------------|
-| `check-title` | `true` | PR title follows [Conventional Commits](https://www.conventionalcommits.org/) format |
-| `check-description` | `true` | PR body meets minimum length requirement |
-| `check-issue-reference` | `true` | PR references a GitHub issue (`#123`, `Fixes #123`, or issue URL) |
+| `check-title` | `true` | PR title matches an allowed format: [Conventional Commits](https://www.conventionalcommits.org/), issue-number prefix (`#123: Title`), or custom regex |
+| `check-description` | `true` | PR body meets minimum length and contains required sections |
+| `check-issue-reference` | `true` | PR references a GitHub issue (`#123`, `Fixes #123`, issue URL) or Azure Boards work item (`AB#12345`) |
 | `check-release-notes` | `false` | PR body contains release notes section (uses [AbsaOSS/release-notes-presence-check](https://github.com/AbsaOSS/release-notes-presence-check)) |
 | `check-branch-name` | `false` | Source branch follows naming convention |
 | `check-pr-size` | `false` | PR does not exceed maximum file change count |
@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check PR requirements
-        uses: AbsaOSS/check-pr-requirements@v1
+        uses: AbsaOSS/check-pr-requirements@v0.1.0
         with:
           pr-title: ${{ github.event.pull_request.title }}
           pr-body: ${{ github.event.pull_request.body }}
@@ -53,7 +53,7 @@ jobs:
 Only check what you need:
 
 ```yaml
-- uses: AbsaOSS/check-pr-requirements@v1
+- uses: AbsaOSS/check-pr-requirements@v0.1.0
   with:
     pr-title: ${{ github.event.pull_request.title }}
     check-title: "true"
@@ -80,13 +80,18 @@ Only check what you need:
 
 | Input | Default | Description |
 |-------|---------|-------------|
-| `title-types` | `feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert` | Allowed conventional commit types |
-| `title-scopes` | *(empty = any)* | Allowed scopes |
+| `title-formats` | `conventional` | Comma-separated allowed title formats, pass if any matches: `conventional`, `issue-number` (`#123: Title` or `123 - Title`), `custom` |
+| `title-types` | `feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert` | Allowed conventional commit types (`conventional` format) |
+| `title-scopes` | *(empty = any)* | Allowed scopes (`conventional` format) |
+| `title-pattern` | *(empty)* | Regex the title must match (`custom` format) |
 | `description-min-length` | `20` | Minimum description character count |
-| `branch-pattern` | `^(feature|bugfix|hotfix|release|chore|docs|ci|dependabot)/[a-zA-Z0-9._-]+$` | Branch name regex |
+| `description-required-sections` | *(empty = none)* | Comma-separated headings that must appear in the PR body, e.g. `## Overview,## Release Notes` |
+| `issue-reference-require-keyword` | `false` | Only keyword references count (`Fixes #123`, `Closes AB#12345`); bare `#123` / `AB#123` / URLs are rejected |
+| `branch-pattern` | `^(feature|bugfix|hotfix|release|support|chore|docs|ci|dependabot)/[a-zA-Z0-9._-]+$` | Branch name regex |
+| `branch-require-ticket` | `false` | Require ticket number after the branch prefix (`feature/123-user-login`) |
 | `max-files-changed` | `50` | Maximum files changed |
 | `required-labels` | *(empty = any label)* | Required label names |
-| `allowed-target-branches` | `main,master` | Allowed target branches |
+| `allowed-target-branches` | `main,master` | Allowed target branches; glob patterns supported (`main,support/*`) |
 | `release-notes-tag` | `## [Rr]elease [Nn]otes` | Release notes section header pattern |
 | `release-notes-skip-labels` | `no RN` | Labels that skip release notes check |
 | `release-notes-skip-placeholders` | `TBD` | Placeholders indicating missing notes |

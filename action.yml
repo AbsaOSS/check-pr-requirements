@@ -42,7 +42,7 @@ inputs:
 
   # Check toggles
   check-title:
-    description: "Enable conventional commits title check"
+    description: "Enable PR title format check"
     required: false
     default: "true"
   check-description:
@@ -75,22 +75,42 @@ inputs:
     default: "false"
 
   # Check configuration
+  title-formats:
+    description: "Comma-separated allowed title formats, pass if any matches: conventional, issue-number (#123: Title or 123 - Title), custom (uses title-pattern)"
+    required: false
+    default: "conventional"
   title-types:
-    description: "Comma-separated allowed conventional commit types"
+    description: "Comma-separated allowed conventional commit types (conventional format)"
     required: false
     default: "feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert"
   title-scopes:
-    description: "Comma-separated allowed scopes (empty = any scope allowed)"
+    description: "Comma-separated allowed scopes (conventional format; empty = any scope allowed)"
+    required: false
+    default: ""
+  title-pattern:
+    description: "Regex the title must match (custom format)"
     required: false
     default: ""
   description-min-length:
     description: "Minimum PR description length in characters"
     required: false
     default: "20"
+  description-required-sections:
+    description: "Comma-separated headings that must appear in the PR body, e.g. '## Release Notes' (empty = none)"
+    required: false
+    default: ""
+  issue-reference-require-keyword:
+    description: "Only keyword issue references count, e.g. 'Fixes #123', 'Closes AB#12345'"
+    required: false
+    default: "false"
   branch-pattern:
     description: "Regex pattern for valid branch names"
     required: false
-    default: "^(feature|bugfix|hotfix|release|chore|docs|ci|dependabot)/[a-zA-Z0-9._-]+$"
+    default: "^(feature|bugfix|hotfix|release|support|chore|docs|ci|dependabot)/[a-zA-Z0-9._-]+$"
+  branch-require-ticket:
+    description: "Require a ticket number after the branch prefix, e.g. feature/123-user-login"
+    required: false
+    default: "false"
   max-files-changed:
     description: "Maximum number of files changed allowed"
     required: false
@@ -100,7 +120,7 @@ inputs:
     required: false
     default: ""
   allowed-target-branches:
-    description: "Comma-separated list of allowed target branches"
+    description: "Comma-separated list of allowed target branches; glob patterns supported, e.g. 'main,support/*'"
     required: false
     default: "main,master"
   release-notes-tag:
@@ -151,10 +171,15 @@ runs:
         INPUT_CHECK_PR_SIZE: ${{ inputs.check-pr-size }}
         INPUT_CHECK_LABEL: ${{ inputs.check-label }}
         INPUT_CHECK_TARGET_BRANCH: ${{ inputs.check-target-branch }}
+        INPUT_TITLE_FORMATS: ${{ inputs.title-formats }}
         INPUT_TITLE_TYPES: ${{ inputs.title-types }}
         INPUT_TITLE_SCOPES: ${{ inputs.title-scopes }}
+        INPUT_TITLE_PATTERN: ${{ inputs.title-pattern }}
         INPUT_DESCRIPTION_MIN_LENGTH: ${{ inputs.description-min-length }}
+        INPUT_DESCRIPTION_REQUIRED_SECTIONS: ${{ inputs.description-required-sections }}
+        INPUT_ISSUE_REFERENCE_REQUIRE_KEYWORD: ${{ inputs.issue-reference-require-keyword }}
         INPUT_BRANCH_PATTERN: ${{ inputs.branch-pattern }}
+        INPUT_BRANCH_REQUIRE_TICKET: ${{ inputs.branch-require-ticket }}
         INPUT_MAX_FILES_CHANGED: ${{ inputs.max-files-changed }}
         INPUT_REQUIRED_LABELS: ${{ inputs.required-labels }}
         INPUT_ALLOWED_TARGET_BRANCHES: ${{ inputs.allowed-target-branches }}

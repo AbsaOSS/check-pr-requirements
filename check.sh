@@ -22,7 +22,7 @@ set_output() {
 # Format: "env_toggle|default|display_name|script_name"
 # To add a new check: append an entry here and create the script in checks/
 REGISTRY=(
-    "INPUT_CHECK_TITLE|true|PR Title (Conventional Commits)|title_conventional.sh"
+    "INPUT_CHECK_TITLE|true|PR Title|title_format.sh"
     "INPUT_CHECK_DESCRIPTION|true|PR Description|description.sh"
     "INPUT_CHECK_ISSUE_REFERENCE|true|Issue Reference|issue_reference.sh"
     "INPUT_CHECK_BRANCH_NAME|false|Branch Name|branch_name.sh"
