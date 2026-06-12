@@ -6,6 +6,9 @@ set -euo pipefail
 #   INPUT_LABELS          - Comma-separated list of PR labels (required)
 #   INPUT_REQUIRED_LABELS - Comma-separated required labels (empty = at least one label)
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib.sh"
+
 LABELS="${INPUT_LABELS:-}"
 REQUIRED="${INPUT_REQUIRED_LABELS:-}"
 
@@ -19,22 +22,22 @@ if [[ -z "$REQUIRED" ]]; then
     exit 0
 fi
 
-IFS=',' read -ra REQUIRED_ARRAY <<< "$REQUIRED"
-IFS=',' read -ra LABEL_ARRAY <<< "$LABELS"
+split_csv "$REQUIRED"
+REQUIRED_ARRAY=(${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"})
+split_csv "$LABELS"
+LABEL_ARRAY=(${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"})
 
 MISSING=()
-for req in "${REQUIRED_ARRAY[@]}"; do
-    req_trimmed=$(echo "$req" | xargs)
+for req in ${REQUIRED_ARRAY[@]+"${REQUIRED_ARRAY[@]}"}; do
     FOUND=false
-    for label in "${LABEL_ARRAY[@]}"; do
-        label_trimmed=$(echo "$label" | xargs)
-        if [[ "$label_trimmed" == "$req_trimmed" ]]; then
+    for label in ${LABEL_ARRAY[@]+"${LABEL_ARRAY[@]}"}; do
+        if [[ "$label" == "$req" ]]; then
             FOUND=true
             break
         fi
     done
     if [[ "$FOUND" == "false" ]]; then
-        MISSING+=("$req_trimmed")
+        MISSING+=("$req")
     fi
 done
 

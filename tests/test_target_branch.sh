@@ -18,6 +18,9 @@ INPUT_TARGET_BRANCH="master" \
 INPUT_TARGET_BRANCH="develop" INPUT_ALLOWED_TARGET_BRANCHES="main,develop" \
     assert_pass "custom allowed branch" "$CHECK"
 
+INPUT_TARGET_BRANCH="develop" INPUT_ALLOWED_TARGET_BRANCHES=" main , develop " \
+    assert_pass "allowed list with surrounding whitespace" "$CHECK"
+
 # ── Fail cases ───────────────────────────────────────────────────────────────
 
 INPUT_ALLOWED_TARGET_BRANCHES="" \

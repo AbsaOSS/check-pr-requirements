@@ -6,14 +6,16 @@ set -euo pipefail
 #   INPUT_TARGET_BRANCH          - PR target branch (required)
 #   INPUT_ALLOWED_TARGET_BRANCHES - Comma-separated allowed branches (default: "main,master")
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib.sh"
+
 TARGET="${INPUT_TARGET_BRANCH:?Target branch is required}"
 ALLOWED="${INPUT_ALLOWED_TARGET_BRANCHES:-main,master}"
 
-IFS=',' read -ra ALLOWED_ARRAY <<< "$ALLOWED"
+split_csv "$ALLOWED"
 
-for branch in "${ALLOWED_ARRAY[@]}"; do
-    branch_trimmed=$(echo "$branch" | xargs)
-    if [[ "$TARGET" == "$branch_trimmed" ]]; then
+for branch in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
+    if [[ "$TARGET" == "$branch" ]]; then
         echo "pass"
         exit 0
     fi

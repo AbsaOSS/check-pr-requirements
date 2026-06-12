@@ -15,17 +15,17 @@ GITHUB_PATTERN="${GITHUB_KEYWORDS}[[:space:]]+#[0-9]+"
 HASH_PATTERN="#[0-9]+"
 URL_PATTERN="https?://github\.com/[^/]+/[^/]+/issues/[0-9]+"
 
-if echo "$COMBINED" | grep -qiE "$GITHUB_PATTERN"; then
+if printf '%s\n' "$COMBINED" | grep -qiE "$GITHUB_PATTERN"; then
     echo "pass"
     exit 0
 fi
 
-if echo "$COMBINED" | grep -qE "$HASH_PATTERN"; then
+if printf '%s\n' "$COMBINED" | grep -qE "$HASH_PATTERN"; then
     echo "pass"
     exit 0
 fi
 
-if echo "$COMBINED" | grep -qE "$URL_PATTERN"; then
+if printf '%s\n' "$COMBINED" | grep -qE "$URL_PATTERN"; then
     echo "pass"
     exit 0
 fi

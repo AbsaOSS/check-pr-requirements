@@ -21,6 +21,15 @@ INPUT_LABELS="bug,enhancement" INPUT_REQUIRED_LABELS="bug" \
 INPUT_LABELS="bug,enhancement,docs" INPUT_REQUIRED_LABELS="bug,docs" \
     assert_pass "has all required labels" "$CHECK"
 
+INPUT_LABELS="don't merge,bug" INPUT_REQUIRED_LABELS="don't merge" \
+    assert_pass "label with single quote" "$CHECK"
+
+INPUT_LABELS='say "when",bug' INPUT_REQUIRED_LABELS='say "when"' \
+    assert_pass "label with double quotes" "$CHECK"
+
+INPUT_LABELS=" bug , docs " INPUT_REQUIRED_LABELS="bug,docs" \
+    assert_pass "labels with surrounding whitespace" "$CHECK"
+
 # ── Fail cases ───────────────────────────────────────────────────────────────
 
 INPUT_REQUIRED_LABELS="" \

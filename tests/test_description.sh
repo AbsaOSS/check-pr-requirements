@@ -53,4 +53,12 @@ INPUT_DESCRIPTION_MIN_LENGTH="1" \
 INPUT_PR_BODY="x" \
     assert_pass "minimum length of 1" "$CHECK"
 
+INPUT_DESCRIPTION_MIN_LENGTH="1" \
+INPUT_PR_BODY="-n" \
+    assert_pass "body that looks like an echo flag" "$CHECK"
+
+INPUT_DESCRIPTION_MIN_LENGTH="6" \
+INPUT_PR_BODY="$(printf '\n\n\nshort\n\n')" \
+    assert_fail "surrounding newlines do not count toward length" "$CHECK"
+
 print_results "description" || exit 1

@@ -6,6 +6,9 @@ set -euo pipefail
 #   INPUT_PR_BODY               - PR body to check (required)
 #   INPUT_DESCRIPTION_MIN_LENGTH - Minimum character count (default: 20)
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib.sh"
+
 BODY="${INPUT_PR_BODY:-}"
 MIN_LENGTH="${INPUT_DESCRIPTION_MIN_LENGTH:-20}"
 
@@ -19,7 +22,9 @@ if [[ -z "$BODY" ]]; then
     exit 1
 fi
 
-STRIPPED=$(echo "$BODY" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+# Trim the body as a whole string; echo/sed would trim per line and
+# misinterpret bodies starting with -n/-e as echo flags.
+STRIPPED="$(trim "$BODY")"
 LENGTH=${#STRIPPED}
 
 if [[ "$LENGTH" -lt "$MIN_LENGTH" ]]; then
