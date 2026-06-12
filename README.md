@@ -24,6 +24,10 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, edited, labeled, unlabeled]
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   check-pr:
     runs-on: ubuntu-latest
