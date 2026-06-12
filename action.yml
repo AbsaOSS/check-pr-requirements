@@ -163,6 +163,7 @@ runs:
     - name: Check release notes
       id: release-notes
       if: inputs.check-release-notes == 'true'
+      continue-on-error: true
       uses: AbsaOSS/release-notes-presence-check@8e586b26a5e27f899ee8590a5d988fd4780a3dbf # v0.4.0
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
@@ -176,18 +177,22 @@ runs:
     - name: Evaluate results
       id: evaluate
       shell: bash
+      env:
+        CHECK_RELEASE_NOTES: ${{ inputs.check-release-notes }}
+        CHECKS_OUTCOME: ${{ steps.checks.outcome }}
+        RELEASE_NOTES_OUTCOME: ${{ steps.release-notes.outcome }}
       run: |
         FAILED=0
 
-        if [[ "${{ steps.checks.outcome }}" == "failure" ]]; then
+        if [[ "$CHECKS_OUTCOME" == "failure" ]]; then
           FAILED=1
         fi
 
-        if [[ "${{ inputs.check-release-notes }}" == "true" && "${{ steps.release-notes.outcome }}" == "failure" ]]; then
+        if [[ "$CHECK_RELEASE_NOTES" == "true" && "$RELEASE_NOTES_OUTCOME" == "failure" ]]; then
           FAILED=1
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Release Notes | ❌ Fail | Release notes section missing or empty |" >> "$GITHUB_STEP_SUMMARY"
-        elif [[ "${{ inputs.check-release-notes }}" == "true" && "${{ steps.release-notes.outcome }}" == "success" ]]; then
+        elif [[ "$CHECK_RELEASE_NOTES" == "true" && "$RELEASE_NOTES_OUTCOME" == "success" ]]; then
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Release Notes | ✅ Pass | - |" >> "$GITHUB_STEP_SUMMARY"
         fi
