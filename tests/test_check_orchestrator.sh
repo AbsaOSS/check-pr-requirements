@@ -16,7 +16,7 @@ run_orchestrator() {
 
     # Export all provided vars
     for assignment in "$@"; do
-        export "$assignment"
+        export "${assignment?}"
     done
 
     if [[ "$expected" == "pass" ]]; then

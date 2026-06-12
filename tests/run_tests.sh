@@ -4,10 +4,7 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TESTS_DIR="$SCRIPT_DIR"
 
-TOTAL=0
-PASSED=0
-FAILED=0
-ERRORS=()
+FAILED_FILES=()
 
 # ── Test Registry ────────────────────────────────────────────────────────────
 # To add tests for a new check: create test_<name>.sh and append here
@@ -28,12 +25,15 @@ run_test_file() {
 
     if [[ ! -f "$path" ]]; then
         echo "  ⚠️  Test file not found: ${test_file}"
+        FAILED_FILES+=("${test_file} (not found)")
         return
     fi
 
     echo ""
     echo "━━━ ${test_file} ━━━"
-    bash "$path"
+    if ! bash "$path"; then
+        FAILED_FILES+=("$test_file")
+    fi
 }
 
 for test_file in "${TEST_FILES[@]}"; do
@@ -42,4 +42,8 @@ done
 
 echo ""
 echo "═══════════════════════════════════════"
-echo "Test run complete"
+if [[ ${#FAILED_FILES[@]} -gt 0 ]]; then
+    echo "Test run FAILED: ${FAILED_FILES[*]}"
+    exit 1
+fi
+echo "Test run complete: all test files passed"
