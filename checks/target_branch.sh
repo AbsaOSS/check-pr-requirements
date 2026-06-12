@@ -4,7 +4,9 @@ set -euo pipefail
 # Validates that PR targets an allowed branch.
 # Inputs via env vars:
 #   INPUT_TARGET_BRANCH          - PR target branch (required)
-#   INPUT_ALLOWED_TARGET_BRANCHES - Comma-separated allowed branches (default: "main,master")
+#   INPUT_ALLOWED_TARGET_BRANCHES - Comma-separated allowed branches; glob
+#                                   patterns supported, e.g. "main,support/*"
+#                                   (default: "main,master")
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib.sh"
@@ -15,7 +17,8 @@ ALLOWED="${INPUT_ALLOWED_TARGET_BRANCHES:-main,master}"
 split_csv "$ALLOWED"
 
 for branch in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
-    if [[ "$TARGET" == "$branch" ]]; then
+    # shellcheck disable=SC2053 # unquoted RHS is intentional: allowed entries may be globs
+    if [[ "$TARGET" == $branch ]]; then
         echo "pass"
         exit 0
     fi

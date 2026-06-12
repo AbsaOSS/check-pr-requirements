@@ -104,3 +104,37 @@ jobs:
           check-description: "false"
           check-issue-reference: "false"
           check-release-notes: "false"
+
+  integration-test-absa-profile:
+    name: Integration - ABSA Profile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Run with ABSA-aligned configuration (should pass)
+        uses: ./
+        with:
+          pr-title: "#123: Add user login"
+          pr-body: |
+            ## Overview
+            Adds the login flow.
+
+            ## Release Notes
+            - Added the ability to log in.
+
+            ## Related
+            Closes AB#12345
+          pr-branch: "feature/123-user-login"
+          target-branch: "support/1.0.4"
+          check-title: "true"
+          title-formats: "issue-number"
+          check-description: "true"
+          description-required-sections: "## Overview,## Release Notes,## Related"
+          check-issue-reference: "true"
+          issue-reference-require-keyword: "true"
+          check-branch-name: "true"
+          branch-require-ticket: "true"
+          check-target-branch: "true"
+          allowed-target-branches: "main,master,support/*,release/*"
+          check-release-notes: "false"
