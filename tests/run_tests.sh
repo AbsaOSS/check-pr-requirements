@@ -9,7 +9,7 @@ FAILED_FILES=()
 # ── Test Registry ────────────────────────────────────────────────────────────
 # To add tests for a new check: create test_<name>.sh and append here
 TEST_FILES=(
-    "test_title_conventional.sh"
+    "test_title_format.sh"
     "test_description.sh"
     "test_issue_reference.sh"
     "test_branch_name.sh"
