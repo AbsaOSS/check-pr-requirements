@@ -82,15 +82,15 @@ Only check what you need:
 |-------|---------|-------------|
 | `title-formats` | `conventional` | Comma-separated allowed title formats, pass if any matches: `conventional`, `issue-number` (`#123: Title` or `123 - Title`), `custom` |
 | `title-types` | `feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert` | Allowed conventional commit types (`conventional` format) |
-| `title-scopes` | *(empty = any)* | Allowed scopes (`conventional` format) |
-| `title-pattern` | *(empty)* | Regex the title must match (`custom` format) |
+| `title-scopes` | *(empty = any)* | Allowed scopes (`conventional` format), e.g. `api,ui,auth` |
+| `title-pattern` | *(empty)* | Regex the title must match (`custom` format), e.g. `^\[[A-Z]+-[0-9]+\] .+` (matches `[PROJ-123] Title`) |
 | `description-min-length` | `20` | Minimum description character count |
 | `description-required-sections` | *(empty = none)* | Comma-separated headings that must appear in the PR body, e.g. `## Overview,## Release Notes` |
 | `issue-reference-require-keyword` | `false` | Only keyword references count (`Fixes #123`, `Closes AB#12345`); bare `#123` / `AB#123` / URLs are rejected |
 | `branch-pattern` | `^(feature|bugfix|hotfix|release|support|chore|docs|ci|dependabot)/[a-zA-Z0-9._-]+$` | Branch name regex |
 | `branch-require-ticket` | `false` | Require ticket number after the branch prefix (`feature/123-user-login`) |
 | `max-files-changed` | `50` | Maximum files changed |
-| `required-labels` | *(empty = any label)* | Required label names |
+| `required-labels` | *(empty = any label)* | Required label names, e.g. `bug,enhancement` |
 | `allowed-target-branches` | `main,master` | Allowed target branches; glob patterns supported (`main,support/*`) |
 | `release-notes-tag` | `## [Rr]elease [Nn]otes` | Release notes section header pattern |
 | `release-notes-skip-labels` | `no RN` | Labels that skip release notes check |
