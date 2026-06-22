@@ -103,14 +103,22 @@ inputs:
     description: "Only keyword issue references count, e.g. 'Fixes #123', 'Closes AB#12345'"
     required: false
     default: "false"
+  branch-prefixes:
+    description: "Comma-separated allowed branch prefixes (e.g. 'feature,bugfix,hotfix'). When set, builds the branch pattern from this list and takes precedence over branch-pattern. Empty = use branch-pattern."
+    required: false
+    default: ""
   branch-pattern:
-    description: "Regex pattern for valid branch names"
+    description: "Full regex override for valid branch names (used only when branch-prefixes is empty)"
     required: false
     default: "^(feature|bugfix|hotfix|release|support|chore|docs|ci|dependabot)/[a-zA-Z0-9._-]+$"
   branch-require-ticket:
-    description: "Require a ticket number after the branch prefix, e.g. feature/123-user-login"
+    description: "Require a ticket after the branch prefix, e.g. feature/123-user-login"
     required: false
     default: "false"
+  branch-ticket-pattern:
+    description: "Regex the branch must match when branch-require-ticket is true (default: numeric ticket after prefix, e.g. feature/123-user-login). Override for schemes like feature/PROJ-123-..."
+    required: false
+    default: "^[^/]+/[0-9]+-"
   max-files-changed:
     description: "Maximum number of files changed allowed"
     required: false
@@ -178,8 +186,10 @@ runs:
         INPUT_DESCRIPTION_MIN_LENGTH: ${{ inputs.description-min-length }}
         INPUT_DESCRIPTION_REQUIRED_SECTIONS: ${{ inputs.description-required-sections }}
         INPUT_ISSUE_REFERENCE_REQUIRE_KEYWORD: ${{ inputs.issue-reference-require-keyword }}
+        INPUT_BRANCH_PREFIXES: ${{ inputs.branch-prefixes }}
         INPUT_BRANCH_PATTERN: ${{ inputs.branch-pattern }}
         INPUT_BRANCH_REQUIRE_TICKET: ${{ inputs.branch-require-ticket }}
+        INPUT_BRANCH_TICKET_PATTERN: ${{ inputs.branch-ticket-pattern }}
         INPUT_MAX_FILES_CHANGED: ${{ inputs.max-files-changed }}
         INPUT_REQUIRED_LABELS: ${{ inputs.required-labels }}
         INPUT_ALLOWED_TARGET_BRANCHES: ${{ inputs.allowed-target-branches }}
