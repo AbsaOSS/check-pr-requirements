@@ -48,7 +48,7 @@ code() {
 
 remediation_for() {
     local title_formats title_types desc_min desc_sections issue_keyword
-    local branch_prefixes branch_pattern branch_ticket max_files req_labels targets
+    local branch_pattern branch_ticket max_files req_labels targets
 
     case "$1" in
         "PR Title")
@@ -75,13 +75,8 @@ remediation_for() {
                 echo "- **Issue Reference** — reference an issue in the description, e.g. \`#123\`."
             fi ;;
         "Branch Name")
-            branch_prefixes="${INPUT_BRANCH_PREFIXES:-}"
             branch_pattern="${INPUT_BRANCH_PATTERN:-^(feature|bugfix|hotfix|release|support|chore|docs|ci|dependabot)/[a-zA-Z0-9._-]+\$}"
-            if [[ -n "$branch_prefixes" ]]; then
-                echo "- **Branch Name** — name the branch \`<prefix>/<description>\` using an allowed prefix: $(code "$branch_prefixes" -)."
-            else
-                echo "- **Branch Name** — the branch name must match $(code "$branch_pattern" -), e.g. \`feature/add-login\`."
-            fi
+            echo "- **Branch Name** — the branch name must match $(code "$branch_pattern" -), e.g. \`feature/add-login\`."
             if [[ "${INPUT_BRANCH_REQUIRE_TICKET:-false}" == "true" ]]; then
                 branch_ticket="${INPUT_BRANCH_TICKET_PATTERN:-^[^/]+/[0-9]+-}"
                 echo "  - Must include a ticket after the prefix, matching $(code "$branch_ticket" -), e.g. \`feature/123-add-login\`."

@@ -103,12 +103,8 @@ inputs:
     description: "Only keyword issue references count, e.g. 'Fixes #123', 'Closes AB#12345'"
     required: false
     default: "false"
-  branch-prefixes:
-    description: "Comma-separated allowed branch prefixes (e.g. 'feature,bugfix,hotfix'). When set, builds the branch pattern from this list and takes precedence over branch-pattern. Empty = use branch-pattern."
-    required: false
-    default: ""
   branch-pattern:
-    description: "Full regex override for valid branch names (used only when branch-prefixes is empty)"
+    description: "Full regex override for valid branch names"
     required: false
     default: "^(feature|bugfix|hotfix|release|support|chore|docs|ci|dependabot)/[a-zA-Z0-9._-]+$"
   branch-require-ticket:
@@ -186,7 +182,6 @@ runs:
         INPUT_DESCRIPTION_MIN_LENGTH: ${{ inputs.description-min-length }}
         INPUT_DESCRIPTION_REQUIRED_SECTIONS: ${{ inputs.description-required-sections }}
         INPUT_ISSUE_REFERENCE_REQUIRE_KEYWORD: ${{ inputs.issue-reference-require-keyword }}
-        INPUT_BRANCH_PREFIXES: ${{ inputs.branch-prefixes }}
         INPUT_BRANCH_PATTERN: ${{ inputs.branch-pattern }}
         INPUT_BRANCH_REQUIRE_TICKET: ${{ inputs.branch-require-ticket }}
         INPUT_BRANCH_TICKET_PATTERN: ${{ inputs.branch-ticket-pattern }}
