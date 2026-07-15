@@ -26,9 +26,13 @@ jobs:
           pr-title: ${{ github.event.pull_request.title }}
           pr-body: ${{ github.event.pull_request.body }}
           pr-branch: ${{ github.event.pull_request.head.ref }}
+          pr-author: ${{ github.event.pull_request.user.login }}
           pr-number: ${{ github.event.pull_request.number }}
           target-branch: ${{ github.event.pull_request.base.ref }}
           files-changed: ${{ github.event.pull_request.changed_files }}
+
+          # Bypass all checks for bot authors so Dependabot PRs are not blocked
+          skip-actors: "dependabot[bot]"
 
           check-title: "true"
           title-formats: "issue-number"

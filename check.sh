@@ -3,6 +3,7 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHECKS_DIR="${SCRIPT_DIR}/checks"
+source "${CHECKS_DIR}/lib.sh"
 
 set_output() {
     local name="$1" value="$2"
@@ -17,6 +18,54 @@ set_output() {
         echo "${delimiter}"
     } >> "${GITHUB_OUTPUT:-/dev/null}"
 }
+
+# ── Bypass ────────────────────────────────────────────────────────────────────
+# Skip all checks when the PR author matches skip-actors, or the PR carries any
+# label in skip-labels. Intended for bot PRs (e.g. Dependabot) or manually
+# labelled exemptions. Emits a passing summary/outputs and exits.
+inert() { printf '%s' "$1" | tr '\n' ' ' | tr -d '`'; }
+
+emit_skip() {
+    local reason="$1"
+    {
+        echo "## PR Requirements Check"
+        echo ""
+        echo "Checks skipped: ${reason}."
+    } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+    set_output "result" "pass"
+    set_output "pass-count" "0"
+    set_output "fail-count" "0"
+    set_output "total-count" "0"
+    echo ""
+    echo "PR Requirements: skipped (${reason})"
+    exit 0
+}
+
+PR_AUTHOR="${INPUT_PR_AUTHOR:-}"
+SKIP_ACTORS="${INPUT_SKIP_ACTORS:-}"
+if [[ -n "$PR_AUTHOR" && -n "$SKIP_ACTORS" ]]; then
+    split_csv "$SKIP_ACTORS"
+    for actor in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
+        if [[ "$PR_AUTHOR" == "$actor" ]]; then
+            emit_skip "author \`$(inert "$PR_AUTHOR")\` matched \`skip-actors\`"
+        fi
+    done
+fi
+
+PR_LABELS="${INPUT_LABELS:-}"
+SKIP_LABELS="${INPUT_SKIP_LABELS:-}"
+if [[ -n "$PR_LABELS" && -n "$SKIP_LABELS" ]]; then
+    split_csv "$PR_LABELS"
+    labels_arr=(${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"})
+    split_csv "$SKIP_LABELS"
+    for skip in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
+        for lbl in ${labels_arr[@]+"${labels_arr[@]}"}; do
+            if [[ "$lbl" == "$skip" ]]; then
+                emit_skip "label \`$(inert "$skip")\` matched \`skip-labels\`"
+            fi
+        done
+    done
+fi
 
 # ── Check Registry ──────────────────────────────────────────────────────────
 # Format: "env_toggle|default|display_name|script_name"
