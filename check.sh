@@ -31,6 +31,74 @@ REGISTRY=(
     "INPUT_CHECK_TARGET_BRANCH|false|Target Branch|target_branch.sh"
 )
 
+# ── Remediation tips ──────────────────────────────────────────────────────────
+# Per-check "how to fix" guidance, keyed by display name. Tips are built from the
+# same configuration inputs the checks use, so guidance stays accurate as rules
+# change. Config values are rendered as inert code spans (backticks/newlines
+# stripped) to keep the summary safe.
+code() {
+    # Render "$1" as an inert inline code span; fall back to "$2" when empty.
+    local value="$1"
+    value=$(printf '%s' "$value" | tr '\n' ' ' | tr -d '`')
+    if [[ -z "$value" ]]; then
+        value="$2"
+    fi
+    printf '`%s`' "$value"
+}
+
+remediation_for() {
+    local title_formats title_types desc_min desc_sections issue_keyword
+    local branch_pattern branch_ticket max_files req_labels targets
+
+    case "$1" in
+        "PR Title")
+            title_formats="${INPUT_TITLE_FORMATS:-conventional}"
+            title_types="${INPUT_TITLE_TYPES:-feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert}"
+            echo "- **PR Title** — the title must match one of these formats: $(code "$title_formats" conventional)."
+            if [[ ",$title_formats," == *",conventional,"* ]]; then
+                echo "  - Allowed conventional types: $(code "$title_types" "feat, fix, ...")."
+                echo "  - ✅ \`feat: add retry logic\`"
+                echo "  - ❌ \`added retry logic\`"
+            fi ;;
+        "PR Description")
+            desc_min="${INPUT_DESCRIPTION_MIN_LENGTH:-20}"
+            desc_sections="${INPUT_DESCRIPTION_REQUIRED_SECTIONS:-}"
+            echo "- **PR Description** — write a description of at least $(code "$desc_min" 20) characters."
+            if [[ -n "$desc_sections" ]]; then
+                echo "  - Required sections: $(code "$desc_sections" -)."
+            fi ;;
+        "Issue Reference")
+            issue_keyword="${INPUT_ISSUE_REFERENCE_REQUIRE_KEYWORD:-false}"
+            if [[ "$issue_keyword" == "true" ]]; then
+                echo "- **Issue Reference** — reference an issue with a keyword, e.g. \`Closes #123\` or \`Fixes AB#123\`."
+            else
+                echo "- **Issue Reference** — reference an issue in the description, e.g. \`#123\`."
+            fi ;;
+        "Branch Name")
+            branch_pattern="${INPUT_BRANCH_PATTERN:-^(feature|bugfix|hotfix|release|support|chore|docs|ci|dependabot)/[a-zA-Z0-9._-]+\$}"
+            echo "- **Branch Name** — the branch name must match $(code "$branch_pattern" -), e.g. \`feature/add-login\`."
+            if [[ "${INPUT_BRANCH_REQUIRE_TICKET:-false}" == "true" ]]; then
+                branch_ticket="${INPUT_BRANCH_TICKET_PATTERN:-^[^/]+/[0-9]+-}"
+                echo "  - Must include a ticket after the prefix, matching $(code "$branch_ticket" -), e.g. \`feature/123-add-login\`."
+            fi ;;
+        "PR Size")
+            max_files="${INPUT_MAX_FILES_CHANGED:-50}"
+            echo "- **PR Size** — keep changed files at or below $(code "$max_files" 50); split larger changes into smaller PRs." ;;
+        "Label Presence")
+            req_labels="${INPUT_REQUIRED_LABELS:-}"
+            if [[ -n "$req_labels" ]]; then
+                echo "- **Label Presence** — add the required label(s): $(code "$req_labels" -)."
+            else
+                echo "- **Label Presence** — add at least one label to the PR."
+            fi ;;
+        "Target Branch")
+            targets="${INPUT_ALLOWED_TARGET_BRANCHES:-main,master}"
+            echo "- **Target Branch** — retarget the PR to an allowed branch: $(code "$targets" "main, master")." ;;
+        *)
+            echo "- **$1** — see the check details above and the contributing guidelines." ;;
+    esac
+}
+
 # ── Runner ───────────────────────────────────────────────────────────────────
 declare -a CHECK_NAMES=()
 declare -a CHECK_RESULTS=()
@@ -103,6 +171,20 @@ TOTAL=$((PASS_COUNT + FAIL_COUNT))
 
     echo ""
     echo "**Result:** ${PASS_COUNT}/${TOTAL} checks passed"
+
+    # ── How to fix (failures only) ───────────────────────────────────────────
+    if [[ "$FAIL_COUNT" -gt 0 ]]; then
+        echo ""
+        echo "### How to fix"
+        echo ""
+        echo "The checks above must pass before this PR can merge."
+        echo ""
+        for i in "${!CHECK_NAMES[@]}"; do
+            if [[ "${CHECK_RESULTS[$i]}" != "pass" ]]; then
+                remediation_for "${CHECK_NAMES[$i]}"
+            fi
+        done
+    fi
 } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
 
 if [[ "$FAIL_COUNT" -eq 0 ]]; then

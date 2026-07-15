@@ -137,4 +137,73 @@ run_sanitization_case "summary strips backticks from details" check_backticks_st
 run_sanitization_case "summary wraps details in code span" check_detail_is_code_span
 run_sanitization_case "GITHUB_OUTPUT uses random delimiter heredoc" check_output_delimiter
 
+# ── "How to fix" guidance (#29) ──────────────────────────────────────────────
+# Runs check.sh with a fully controlled env, writes the summary to a temp file,
+# then asserts on its contents via the provided predicate.
+run_summary_case() {
+    local description="$1" check_fn="$2"
+    shift 2
+
+    ((TESTS_TOTAL++))
+    local summary_file output_file
+    summary_file="$(mktemp)"
+    output_file="$(mktemp)"
+
+    env -i PATH="$PATH" HOME="$HOME" \
+        GITHUB_STEP_SUMMARY="$summary_file" GITHUB_OUTPUT="$output_file" \
+        "$@" \
+        bash "$CHECK" >/dev/null 2>&1
+
+    if "$check_fn" "$summary_file"; then
+        echo "  ✅ ${description}"
+        ((TESTS_PASSED++))
+    else
+        echo "  ❌ ${description}"
+        ((TESTS_FAILED++))
+    fi
+    rm -f "$summary_file" "$output_file"
+}
+
+has_how_to_fix()   { grep -qF '### How to fix' "$1"; }
+no_how_to_fix()    { ! grep -qF '### How to fix' "$1"; }
+has_title_tip()    { grep -qF '**PR Title**' "$1"; }
+# Tip reflects the configured input, not a hardcoded string
+has_configured_types() { grep -qF 'wibble,wobble' "$1"; }
+has_target_tip()   { grep -qF 'develop' "$1"; }
+
+# Failing title check → guidance present and reflects configured title-types
+run_summary_case "failure renders How to fix" has_how_to_fix \
+    INPUT_PR_TITLE='added retry logic' \
+    INPUT_CHECK_TITLE=true INPUT_CHECK_DESCRIPTION=false \
+    INPUT_CHECK_ISSUE_REFERENCE=false INPUT_CHECK_BRANCH_NAME=false \
+    INPUT_CHECK_PR_SIZE=false INPUT_CHECK_LABEL=false INPUT_CHECK_TARGET_BRANCH=false
+
+run_summary_case "failure lists failed check tip" has_title_tip \
+    INPUT_PR_TITLE='added retry logic' \
+    INPUT_CHECK_TITLE=true INPUT_CHECK_DESCRIPTION=false \
+    INPUT_CHECK_ISSUE_REFERENCE=false INPUT_CHECK_BRANCH_NAME=false \
+    INPUT_CHECK_PR_SIZE=false INPUT_CHECK_LABEL=false INPUT_CHECK_TARGET_BRANCH=false
+
+run_summary_case "tip reflects configured title-types" has_configured_types \
+    INPUT_PR_TITLE='added retry logic' INPUT_TITLE_TYPES='wibble,wobble' \
+    INPUT_CHECK_TITLE=true INPUT_CHECK_DESCRIPTION=false \
+    INPUT_CHECK_ISSUE_REFERENCE=false INPUT_CHECK_BRANCH_NAME=false \
+    INPUT_CHECK_PR_SIZE=false INPUT_CHECK_LABEL=false INPUT_CHECK_TARGET_BRANCH=false
+
+run_summary_case "target-branch tip reflects allowed branches" has_target_tip \
+    INPUT_PR_TITLE='feat: ok #1' INPUT_TARGET_BRANCH='feature/x' \
+    INPUT_ALLOWED_TARGET_BRANCHES='develop' \
+    INPUT_CHECK_TITLE=false INPUT_CHECK_DESCRIPTION=false \
+    INPUT_CHECK_ISSUE_REFERENCE=false INPUT_CHECK_BRANCH_NAME=false \
+    INPUT_CHECK_PR_SIZE=false INPUT_CHECK_LABEL=false INPUT_CHECK_TARGET_BRANCH=true
+
+# Passing run → no guidance block
+run_summary_case "passing run omits How to fix" no_how_to_fix \
+    INPUT_PR_TITLE='feat: add login #1' \
+    INPUT_PR_BODY='This is a valid description that references issue #42 for tracking' \
+    INPUT_CHECK_TITLE=true INPUT_CHECK_DESCRIPTION=true \
+    INPUT_CHECK_ISSUE_REFERENCE=true INPUT_CHECK_BRANCH_NAME=false \
+    INPUT_CHECK_PR_SIZE=false INPUT_CHECK_LABEL=false INPUT_CHECK_TARGET_BRANCH=false \
+    INPUT_TITLE_TYPES= INPUT_TITLE_SCOPES= INPUT_DESCRIPTION_MIN_LENGTH=
+
 print_results "check_orchestrator" || exit 1

@@ -75,4 +75,21 @@ INPUT_BRANCH_PATTERN="" INPUT_BRANCH_REQUIRE_TICKET="false" \
 INPUT_PR_BRANCH="feature/user-login" \
     assert_pass "ticket not required" "$CHECK"
 
+# ── branch-ticket-pattern override (#27) ─────────────────────────────────────
+
+INPUT_BRANCH_REQUIRE_TICKET="true" \
+INPUT_BRANCH_TICKET_PATTERN="^[^/]+/[A-Z]+-[0-9]+-" \
+INPUT_PR_BRANCH="feature/PROJ-123-user-login" \
+    assert_pass "ticket pattern: non-numeric scheme passes" "$CHECK"
+
+INPUT_BRANCH_REQUIRE_TICKET="true" \
+INPUT_BRANCH_TICKET_PATTERN="^[^/]+/[A-Z]+-[0-9]+-" \
+INPUT_PR_BRANCH="feature/123-user-login" \
+    assert_fail "ticket pattern: numeric fails custom scheme" "$CHECK"
+
+INPUT_BRANCH_REQUIRE_TICKET="true" \
+INPUT_BRANCH_TICKET_PATTERN="" \
+INPUT_PR_BRANCH="feature/123-user-login" \
+    assert_pass "ticket pattern: default numeric still works" "$CHECK"
+
 print_results "branch_name" || exit 1
