@@ -134,7 +134,7 @@ inputs:
   skip-actors:
     description: "Comma-separated PR-author logins that bypass all checks (e.g. bots). Empty = no bypass."
     required: false
-    default: "dependabot[bot]"
+    default: ""
   skip-labels:
     description: "Comma-separated PR labels that bypass all checks. Empty = no bypass."
     required: false

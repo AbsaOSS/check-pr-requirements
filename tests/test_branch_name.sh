@@ -75,7 +75,7 @@ INPUT_BRANCH_PATTERN="" INPUT_BRANCH_REQUIRE_TICKET="false" \
 INPUT_PR_BRANCH="feature/user-login" \
     assert_pass "ticket not required" "$CHECK"
 
-# ── branch-ticket-pattern override (#27) ─────────────────────────────────────
+# ── branch-ticket-pattern override ───────────────────────────────────────────
 
 INPUT_BRANCH_REQUIRE_TICKET="true" \
 INPUT_BRANCH_TICKET_PATTERN="^[^/]+/[A-Z]+-[0-9]+-" \

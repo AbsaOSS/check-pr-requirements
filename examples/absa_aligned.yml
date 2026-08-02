@@ -30,9 +30,12 @@ jobs:
           pr-number: ${{ github.event.pull_request.number }}
           target-branch: ${{ github.event.pull_request.base.ref }}
           files-changed: ${{ github.event.pull_request.changed_files }}
+          labels: ${{ join(github.event.pull_request.labels.*.name, ',') }}
 
           # Bypass all checks for bot authors so Dependabot PRs are not blocked
           skip-actors: "dependabot[bot]"
+          # Bypass all checks when the PR carries any of these labels
+          skip-labels: "skip-checks"
 
           check-title: "true"
           title-formats: "issue-number"

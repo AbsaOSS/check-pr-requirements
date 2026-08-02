@@ -94,7 +94,7 @@ Only check what you need:
 | `max-files-changed` | `50` | Maximum files changed |
 | `required-labels` | *(empty = any label)* | Required label names, e.g. `bug,enhancement` |
 | `allowed-target-branches` | `main,master` | Allowed target branches; glob patterns supported (`main,support/*`) |
-| `skip-actors` | `dependabot[bot]` | Comma-separated PR-author logins that bypass **all** checks (needs `pr-author` wired). Empty = no bypass |
+| `skip-actors` | *(empty = no bypass)* | Comma-separated PR-author logins that bypass **all** checks (needs `pr-author` wired), e.g. `dependabot[bot]` |
 | `skip-labels` | *(empty = no bypass)* | Comma-separated PR labels that bypass **all** checks (needs `labels` wired), e.g. `skip-checks,automated` |
 | `release-notes-tag` | `## [Rr]elease [Nn]otes` | Release notes section header pattern |
 | `release-notes-skip-labels` | `no RN` | Labels that skip release notes check |

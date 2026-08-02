@@ -87,7 +87,7 @@ run_orchestrator pass "optional checks enabled and pass" \
     "INPUT_TITLE_TYPES=" "INPUT_TITLE_SCOPES=" "INPUT_DESCRIPTION_MIN_LENGTH=" \
     "INPUT_BRANCH_PATTERN=" "INPUT_ALLOWED_TARGET_BRANCHES="
 
-# ── Actor bypass (#32) ───────────────────────────────────────────────────────
+# ── Actor and label bypass ───────────────────────────────────────────────────
 
 # Author in skip-actors → all checks skipped, pass despite an invalid title/body
 run_orchestrator pass "skip-actors bypasses checks for matching author" \
@@ -195,7 +195,7 @@ run_sanitization_case "summary strips backticks from details" check_backticks_st
 run_sanitization_case "summary wraps details in code span" check_detail_is_code_span
 run_sanitization_case "GITHUB_OUTPUT uses random delimiter heredoc" check_output_delimiter
 
-# ── "How to fix" guidance (#29) ──────────────────────────────────────────────
+# ── "How to fix" guidance ────────────────────────────────────────────────────
 # Runs check.sh with a fully controlled env, writes the summary to a temp file,
 # then asserts on its contents via the provided predicate.
 run_summary_case() {
