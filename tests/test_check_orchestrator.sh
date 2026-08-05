@@ -87,6 +87,64 @@ run_orchestrator pass "optional checks enabled and pass" \
     "INPUT_TITLE_TYPES=" "INPUT_TITLE_SCOPES=" "INPUT_DESCRIPTION_MIN_LENGTH=" \
     "INPUT_BRANCH_PATTERN=" "INPUT_ALLOWED_TARGET_BRANCHES="
 
+# ── Actor and label bypass ───────────────────────────────────────────────────
+
+# Author in skip-actors → all checks skipped, pass despite an invalid title/body
+run_orchestrator pass "skip-actors bypasses checks for matching author" \
+    "INPUT_PR_TITLE=Bump actions/checkout from 3 to 4" \
+    "INPUT_PR_BODY=" \
+    "INPUT_PR_AUTHOR=dependabot[bot]" "INPUT_SKIP_ACTORS=dependabot[bot]" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=true" "INPUT_CHECK_ISSUE_REFERENCE=true" \
+    "${DEFAULTS[@]}"
+
+# Author not in skip-actors → checks run normally and fail
+run_orchestrator fail "non-matching author is not bypassed" \
+    "INPUT_PR_TITLE=Bump actions/checkout from 3 to 4" \
+    "INPUT_PR_BODY=" \
+    "INPUT_PR_AUTHOR=some-human" "INPUT_SKIP_ACTORS=dependabot[bot]" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=true" "INPUT_CHECK_ISSUE_REFERENCE=true" \
+    "${DEFAULTS[@]}"
+
+# Empty skip-actors → no bypass, checks run normally and fail
+run_orchestrator fail "empty skip-actors disables bypass" \
+    "INPUT_PR_TITLE=Bump actions/checkout from 3 to 4" \
+    "INPUT_PR_BODY=" \
+    "INPUT_PR_AUTHOR=dependabot[bot]" "INPUT_SKIP_ACTORS=" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=true" "INPUT_CHECK_ISSUE_REFERENCE=true" \
+    "${DEFAULTS[@]}"
+
+# Multiple actors, matches a later entry (with surrounding whitespace)
+run_orchestrator pass "skip-actors matches later CSV entry with spaces" \
+    "INPUT_PR_TITLE=Bump actions/checkout from 3 to 4" \
+    "INPUT_PR_BODY=" \
+    "INPUT_PR_AUTHOR=renovate[bot]" "INPUT_SKIP_ACTORS=dependabot[bot], renovate[bot]" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=true" "INPUT_CHECK_ISSUE_REFERENCE=true" \
+    "${DEFAULTS[@]}"
+
+# A PR label in skip-labels → all checks skipped despite an invalid title/body
+run_orchestrator pass "skip-labels bypasses checks for matching label" \
+    "INPUT_PR_TITLE=Bump actions/checkout from 3 to 4" \
+    "INPUT_PR_BODY=" \
+    "INPUT_LABELS=automated, skip-checks" "INPUT_SKIP_LABELS=skip-checks" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=true" "INPUT_CHECK_ISSUE_REFERENCE=true" \
+    "${DEFAULTS[@]}"
+
+# PR label not in skip-labels → checks run normally and fail
+run_orchestrator fail "non-matching label is not bypassed" \
+    "INPUT_PR_TITLE=Bump actions/checkout from 3 to 4" \
+    "INPUT_PR_BODY=" \
+    "INPUT_LABELS=bug,enhancement" "INPUT_SKIP_LABELS=skip-checks" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=true" "INPUT_CHECK_ISSUE_REFERENCE=true" \
+    "${DEFAULTS[@]}"
+
+# Empty skip-labels → no label bypass, checks run normally and fail
+run_orchestrator fail "empty skip-labels disables label bypass" \
+    "INPUT_PR_TITLE=Bump actions/checkout from 3 to 4" \
+    "INPUT_PR_BODY=" \
+    "INPUT_LABELS=skip-checks" "INPUT_SKIP_LABELS=" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=true" "INPUT_CHECK_ISSUE_REFERENCE=true" \
+    "${DEFAULTS[@]}"
+
 # ── Summary / output sanitization ───────────────────────────────────────────
 
 run_sanitization_case() {
@@ -137,7 +195,7 @@ run_sanitization_case "summary strips backticks from details" check_backticks_st
 run_sanitization_case "summary wraps details in code span" check_detail_is_code_span
 run_sanitization_case "GITHUB_OUTPUT uses random delimiter heredoc" check_output_delimiter
 
-# ── "How to fix" guidance (#29) ──────────────────────────────────────────────
+# ── "How to fix" guidance ────────────────────────────────────────────────────
 # Runs check.sh with a fully controlled env, writes the summary to a temp file,
 # then asserts on its contents via the provided predicate.
 run_summary_case() {
