@@ -92,10 +92,10 @@ Only check what you need:
 | `branch-require-ticket` | `false` | Require a ticket after the branch prefix (`feature/123-user-login`) |
 | `branch-ticket-pattern` | `^[^/]+/[0-9]+-` | Regex the branch must match when `branch-require-ticket` is true. Override for non-numeric schemes, e.g. `^[^/]+/[A-Z]+-[0-9]+-` for `feature/PROJ-123-...` |
 | `max-files-changed` | `50` | Maximum files changed |
-| `required-labels` | *(empty = any label)* | Required label names, e.g. `bug,enhancement` |
+| `required-labels` | *(empty = any label)* | Required label names, matched ignoring case, e.g. `bug,enhancement` |
 | `allowed-target-branches` | `main,master` | Allowed target branches; glob patterns supported (`main,support/*`) |
-| `skip-actors` | *(empty = no bypass)* | Comma-separated PR-author logins that bypass **all** checks (needs `pr-author` wired), e.g. `dependabot[bot]` |
-| `skip-labels` | *(empty = no bypass)* | Comma-separated PR labels that bypass **all** checks (needs `labels` wired), e.g. `skip-checks,automated` |
+| `skip-actors` | *(empty = no bypass)* | Comma-separated PR-author logins (ignoring case) that bypass **all** checks (needs `pr-author` wired), e.g. `dependabot[bot]` |
+| `skip-labels` | *(empty = no bypass)* | Comma-separated PR labels (ignoring case) that bypass **all** checks (needs `labels` wired), e.g. `skip-checks,automated` |
 | `release-notes-tag` | `## [Rr]elease [Nn]otes` | Release notes section header pattern |
 | `release-notes-skip-labels` | `no RN` | Labels that skip release notes check |
 | `release-notes-skip-placeholders` | `TBD` | Placeholders indicating missing notes |
