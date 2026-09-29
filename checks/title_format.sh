@@ -77,8 +77,7 @@ split_csv "$FORMATS"
 FORMAT_LIST=(${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"})
 
 if [[ ${#FORMAT_LIST[@]} -eq 0 ]]; then
-    echo "fail: no title formats configured"
-    exit 1
+    config_error "input 'title-formats' is empty"
 fi
 
 for format in "${FORMAT_LIST[@]}"; do
@@ -97,17 +96,16 @@ for format in "${FORMAT_LIST[@]}"; do
             ;;
         custom)
             if [[ -z "$CUSTOM_PATTERN" ]]; then
-                echo "fail: title format 'custom' requires title-pattern to be set"
-                exit 1
+                config_error "title format 'custom' requires input 'title-pattern' to be set"
             fi
+            require_valid_regex "$CUSTOM_PATTERN" "title-pattern"
             if matches_custom; then
                 echo "pass"
                 exit 0
             fi
             ;;
         *)
-            echo "fail: unknown title format '$format' (allowed: conventional, issue-number, custom)"
-            exit 1
+            config_error "unknown title format '$format' in input 'title-formats' (allowed: conventional, issue-number, custom)"
             ;;
     esac
 done

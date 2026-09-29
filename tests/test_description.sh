@@ -78,4 +78,9 @@ INPUT_DESCRIPTION_REQUIRED_SECTIONS="" \
 INPUT_PR_BODY="Long enough body without any sections at all" \
     assert_pass "no sections required" "$CHECK"
 
+# ── Configuration errors ─────────────────────────────────────────────────────
+
+INPUT_PR_BODY="A valid description body here" INPUT_DESCRIPTION_MIN_LENGTH="abc" \
+    assert_output_contains "invalid min length is a config error" "$CHECK" "config error: input 'description-min-length'"
+
 print_results "description" || exit 1

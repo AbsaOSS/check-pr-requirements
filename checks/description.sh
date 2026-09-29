@@ -14,10 +14,7 @@ source "${SCRIPT_DIR}/lib.sh"
 BODY="${INPUT_PR_BODY:-}"
 MIN_LENGTH="${INPUT_DESCRIPTION_MIN_LENGTH:-$DEFAULT_DESCRIPTION_MIN_LENGTH}"
 
-if ! [[ "$MIN_LENGTH" =~ ^[0-9]+$ ]]; then
-    echo "fail: invalid min length '$MIN_LENGTH'"
-    exit 1
-fi
+require_whole_number "$MIN_LENGTH" "description-min-length"
 
 if [[ -z "$BODY" ]]; then
     echo "fail: PR description is empty"

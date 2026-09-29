@@ -96,6 +96,8 @@ A check whose PR data is empty fails with a message naming the missing input.
 | `release-notes-skip-labels` | `no RN` | Labels that skip release notes check |
 | `release-notes-skip-placeholders` | `TBD` | Placeholders indicating missing notes |
 
+Boolean inputs accept `true`/`false` in any letter case. Invalid configuration (a non-boolean toggle, a non-numeric limit, an invalid regex, an unknown title format) is reported as `⚠️ Error` with the offending input named, and fails the job, so it is not mistaken for a problem with the PR.
+
 ## Outputs
 
 | Output | Description |
