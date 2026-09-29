@@ -336,4 +336,32 @@ run_summary_case "release notes failure is a counted table row with a tip" relea
     INPUT_RELEASE_NOTES_OUTCOME=failure INPUT_CHECK_RELEASE_NOTES=true \
     INPUT_CHECK_TITLE=false INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false
 
+# ── Warn-only checks ─────────────────────────────────────────────────────────
+
+has_warning_row()   { grep -qF '| PR Title | 🟡 Warning |' "$1"; }
+warn_count_one()    { output_has warn-count 1 "$@"; }
+unknown_warn_check() { grep -qF "unknown check 'size' in input 'warn-checks'" "$1"; }
+
+run_orchestrator pass "failing check listed in warn-checks does not fail the run" \
+    "INPUT_PR_TITLE=bad title" "INPUT_WARN_CHECKS=title" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
+run_orchestrator fail "checks not in warn-checks still fail the run" \
+    "INPUT_PR_TITLE=bad title" "INPUT_PR_BODY=" "INPUT_WARN_CHECKS=title" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=true" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
+run_summary_case "warning renders as Warning row" has_warning_row \
+    INPUT_PR_TITLE='bad title' INPUT_WARN_CHECKS='Title' \
+    INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false
+
+run_summary_case "warning sets warn-count" warn_count_one \
+    INPUT_PR_TITLE='bad title' INPUT_WARN_CHECKS='title' \
+    INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false
+
+run_summary_case "unknown warn-checks id is a config error" unknown_warn_check \
+    INPUT_PR_TITLE='feat: ok' INPUT_WARN_CHECKS='size' \
+    INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false
+
 print_results "check_orchestrator" || exit 1

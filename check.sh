@@ -37,6 +37,7 @@ emit_skip() {
     set_output "result" "pass"
     set_output "pass-count" "0"
     set_output "fail-count" "0"
+    set_output "warn-count" "0"
     set_output "total-count" "0"
     set_output "skipped" "true"
     set_output "skip-reason" "${subject} ${value_text} matched ${input_name}"
@@ -169,22 +170,25 @@ declare -a CHECK_RESULTS=()
 declare -a CHECK_MESSAGES=()
 FAIL_COUNT=0
 PASS_COUNT=0
+WARN_COUNT=0
+WARN_CHECKS="${INPUT_WARN_CHECKS:-}"
 
-# result is pass, fail (the PR breaks a rule) or error (invalid configuration)
+# result is pass, fail (the PR breaks a rule), warn (a failure of a check
+# listed in warn-checks, which does not block) or error (invalid configuration)
 record_result() {
     local name="$1" result="$2" message="$3"
     CHECK_NAMES+=("$name")
     CHECK_RESULTS+=("$result")
     CHECK_MESSAGES+=("$message")
-    if [[ "$result" == "pass" ]]; then
-        ((PASS_COUNT++))
-    else
-        ((FAIL_COUNT++))
-    fi
+    case "$result" in
+        pass) ((PASS_COUNT++)) ;;
+        warn) ((WARN_COUNT++)) ;;
+        *) ((FAIL_COUNT++)) ;;
+    esac
 }
 
 run_check() {
-    local name="$1"
+    local name="$1" check_id="$3"
     local script="${CHECKS_DIR}/$2"
 
     if [[ ! -f "$script" ]]; then
@@ -199,7 +203,12 @@ run_check() {
     case "$exit_code" in
         0) record_result "$name" "pass" "$output" ;;
         "$CONFIG_ERROR_EXIT") record_result "$name" "error" "$output" ;;
-        *) record_result "$name" "fail" "$output" ;;
+        *)
+            if csv_contains_ignore_case "$check_id" "$WARN_CHECKS"; then
+                record_result "$name" "warn" "$output"
+            else
+                record_result "$name" "fail" "$output"
+            fi ;;
     esac
 }
 
@@ -208,11 +217,30 @@ input_name_of() {
     printf '%s' "${1#INPUT_}" | tr '[:upper:]_' '[:lower:]-'
 }
 
+# INPUT_CHECK_PR_SIZE -> pr-size, the id used in warn-checks
+check_id_of() {
+    local input_name
+    input_name="$(input_name_of "$1")"
+    printf '%s' "${input_name#check-}"
+}
+
+known_check_ids=""
+for entry in "${REGISTRY[@]}"; do
+    known_check_ids+="$(check_id_of "${entry%%|*}"),"
+done
+split_csv "$WARN_CHECKS"
+for warn_check in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
+    if ! csv_contains_ignore_case "$warn_check" "$known_check_ids"; then
+        record_result "Warn Checks" "error" \
+            "config error: unknown check '${warn_check}' in input 'warn-checks' (known: ${known_check_ids%,})"
+    fi
+done
+
 for entry in "${REGISTRY[@]}"; do
     IFS='|' read -r env_var default display_name script_name <<< "$entry"
     toggle="${!env_var:-$default}"
     case "$(to_lower "$toggle")" in
-        true) run_check "$display_name" "$script_name" ;;
+        true) run_check "$display_name" "$script_name" "$(check_id_of "$env_var")" ;;
         false) ;;
         *) record_result "$display_name" "error" \
             "config error: input '$(input_name_of "$env_var")' must be true or false, got '${toggle}'" ;;
@@ -220,7 +248,7 @@ for entry in "${REGISTRY[@]}"; do
 done
 
 # ── Summary ──────────────────────────────────────────────────────────────────
-TOTAL=$((PASS_COUNT + FAIL_COUNT))
+TOTAL=$((PASS_COUNT + FAIL_COUNT + WARN_COUNT))
 
 {
     echo "## PR Requirements Check"
@@ -232,10 +260,11 @@ TOTAL=$((PASS_COUNT + FAIL_COUNT))
         if [[ "${CHECK_RESULTS[$i]}" == "pass" ]]; then
             echo "| ${CHECK_NAMES[$i]} | ✅ Pass | - |"
         else
-            status="❌ Fail"
-            if [[ "${CHECK_RESULTS[$i]}" == "error" ]]; then
-                status="⚠️ Error"
-            fi
+            case "${CHECK_RESULTS[$i]}" in
+                error) status="⚠️ Error" ;;
+                warn) status="🟡 Warning" ;;
+                *) status="❌ Fail" ;;
+            esac
             # Render PR-controlled text as an inert code span: strip backticks,
             # flatten newlines, escape table pipes
             detail="${CHECK_MESSAGES[$i]#fail: }"
@@ -251,17 +280,25 @@ TOTAL=$((PASS_COUNT + FAIL_COUNT))
 
     echo ""
     echo "**Result:** ${PASS_COUNT}/${TOTAL} checks passed"
+    if [[ "$WARN_COUNT" -gt 0 ]]; then
+        echo "(${WARN_COUNT} with warnings)"
+    fi
 
-    # ── How to fix (failures only) ───────────────────────────────────────────
-    if [[ "$FAIL_COUNT" -gt 0 ]]; then
+    # ── How to fix (failures and warnings) ───────────────────────────────────
+    if [[ $((FAIL_COUNT + WARN_COUNT)) -gt 0 ]]; then
         echo ""
         echo "### How to fix"
         echo ""
-        echo "The checks above must pass before this PR can merge."
+        if [[ "$FAIL_COUNT" -gt 0 ]]; then
+            echo "The failed checks above must pass before this PR can merge."
+        fi
+        if [[ "$WARN_COUNT" -gt 0 ]]; then
+            echo "Warnings do not block merging."
+        fi
         echo ""
         for i in "${!CHECK_NAMES[@]}"; do
             case "${CHECK_RESULTS[$i]}" in
-                fail) remediation_for "${CHECK_NAMES[$i]}" ;;
+                fail|warn) remediation_for "${CHECK_NAMES[$i]}" ;;
                 error) echo "- **${CHECK_NAMES[$i]}** — the action configuration in the workflow file is invalid; fix the input named in the details above." ;;
             esac
         done
@@ -276,6 +313,7 @@ fi
 set_output "result" "$RESULT"
 set_output "pass-count" "$PASS_COUNT"
 set_output "fail-count" "$FAIL_COUNT"
+set_output "warn-count" "$WARN_COUNT"
 set_output "total-count" "$TOTAL"
 set_output "skipped" "false"
 set_output "skip-reason" ""
@@ -287,6 +325,7 @@ for i in "${!CHECK_NAMES[@]}"; do
     case "${CHECK_RESULTS[$i]}" in
         pass) echo "  ✅ ${CHECK_NAMES[$i]}" ;;
         fail) echo "  ❌ ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
+        warn) echo "  🟡 ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
         error) echo "  ⚠️ ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
     esac
 done

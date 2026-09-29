@@ -160,6 +160,10 @@ inputs:
     description: "Comma-separated list of allowed target branches; glob patterns supported, e.g. 'main,support/*'"
     required: false
     default: "main,master"
+  warn-checks:
+    description: "Comma-separated check ids whose failures are reported as warnings and do not fail the job: title, description, issue-reference, branch-name, pr-size, label, target-branch, release-notes"
+    required: false
+    default: ""
   skip-actors:
     description: "Comma-separated PR-author logins that bypass all checks (e.g. bots). Empty = no bypass."
     required: false
@@ -191,6 +195,9 @@ outputs:
   fail-count:
     description: "Number of checks that failed"
     value: ${{ steps.checks.outputs.fail-count }}
+  warn-count:
+    description: "Number of checks listed in warn-checks that failed (reported as warnings)"
+    value: ${{ steps.checks.outputs.warn-count }}
   total-count:
     description: "Total number of checks run"
     value: ${{ steps.checks.outputs.total-count }}
@@ -230,6 +237,7 @@ runs:
         INPUT_PR_AUTHOR: ${{ inputs.pr-author }}
         INPUT_SKIP_ACTORS: ${{ inputs.skip-actors }}
         INPUT_SKIP_LABELS: ${{ inputs.skip-labels }}
+        INPUT_WARN_CHECKS: ${{ inputs.warn-checks }}
         INPUT_TARGET_BRANCH: ${{ inputs.target-branch }}
         INPUT_FILES_CHANGED: ${{ inputs.files-changed }}
         INPUT_ADDITIONS: ${{ inputs.additions }}

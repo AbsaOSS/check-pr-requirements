@@ -97,6 +97,7 @@ A check whose PR data is empty fails with a message naming the missing input.
 | `max-lines-changed` | *(empty = no limit)* | Maximum changed lines (additions + deletions); the size check fails if either limit is exceeded |
 | `required-labels` | *(empty = any label)* | Required label names, matched ignoring case, e.g. `bug,enhancement` |
 | `allowed-target-branches` | `main,master` | Allowed target branches; glob patterns supported (`main,support/*`) |
+| `warn-checks` | *(empty = all blocking)* | Check ids whose failures are warnings that do not fail the job, e.g. `pr-size,label`. Ids: `title`, `description`, `issue-reference`, `branch-name`, `pr-size`, `label`, `target-branch`, `release-notes` |
 | `skip-actors` | *(empty = no bypass)* | Comma-separated PR-author logins (ignoring case) that bypass **all** checks (needs `pr-author` wired), e.g. `dependabot[bot]` |
 | `skip-labels` | *(empty = no bypass)* | Comma-separated PR labels (ignoring case) that bypass **all** checks (needs `labels` wired), e.g. `skip-checks,automated` |
 | `release-notes-tag` | `## [Rr]elease [Nn]otes` | Release notes section header pattern |
@@ -112,6 +113,7 @@ Boolean inputs accept `true`/`false` in any letter case. Invalid configuration (
 | `result` | `pass` or `fail` |
 | `pass-count` | Number of checks passed |
 | `fail-count` | Number of checks failed |
+| `warn-count` | Number of `warn-checks` failures reported as warnings |
 | `total-count` | Total checks executed |
 | `skipped` | `true` when all checks were bypassed by `skip-actors` or `skip-labels` |
 | `skip-reason` | Why the checks were bypassed, e.g. `author dependabot[bot] matched skip-actors` |
