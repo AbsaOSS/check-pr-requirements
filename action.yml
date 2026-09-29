@@ -176,6 +176,21 @@ outputs:
 runs:
   using: "composite"
   steps:
+    # Runs before check.sh, which reports its outcome in the shared summary
+    - name: Check release notes
+      id: release-notes
+      if: inputs.check-release-notes == 'true'
+      continue-on-error: true
+      uses: AbsaOSS/release-notes-presence-check@8e586b26a5e27f899ee8590a5d988fd4780a3dbf # v0.4.0
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      with:
+        github-repository: ${{ github.repository }}
+        pr-number: ${{ inputs.pr-number || github.event.pull_request.number }}
+        title: ${{ inputs.release-notes-tag }}
+        skip-labels: ${{ inputs.release-notes-skip-labels }}
+        skip-placeholders: ${{ inputs.release-notes-skip-placeholders }}
+
     - name: Run PR checks
       id: checks
       continue-on-error: true
@@ -197,6 +212,7 @@ runs:
         INPUT_CHECK_PR_SIZE: ${{ inputs.check-pr-size }}
         INPUT_CHECK_LABEL: ${{ inputs.check-label }}
         INPUT_CHECK_TARGET_BRANCH: ${{ inputs.check-target-branch }}
+        INPUT_CHECK_RELEASE_NOTES: ${{ inputs.check-release-notes }}
         INPUT_TITLE_FORMATS: ${{ inputs.title-formats }}
         INPUT_TITLE_TYPES: ${{ inputs.title-types }}
         INPUT_TITLE_SCOPES: ${{ inputs.title-scopes }}
@@ -210,48 +226,19 @@ runs:
         INPUT_MAX_FILES_CHANGED: ${{ inputs.max-files-changed }}
         INPUT_REQUIRED_LABELS: ${{ inputs.required-labels }}
         INPUT_ALLOWED_TARGET_BRANCHES: ${{ inputs.allowed-target-branches }}
+        INPUT_RELEASE_NOTES_TAG: ${{ inputs.release-notes-tag }}
+        INPUT_RELEASE_NOTES_SKIP_LABELS: ${{ inputs.release-notes-skip-labels }}
+        INPUT_RELEASE_NOTES_OUTCOME: ${{ steps.release-notes.outcome }}
       run: bash "${{ github.action_path }}/check.sh"
-
-    - name: Check release notes
-      id: release-notes
-      if: inputs.check-release-notes == 'true' && steps.checks.outputs.skipped != 'true'
-      continue-on-error: true
-      uses: AbsaOSS/release-notes-presence-check@8e586b26a5e27f899ee8590a5d988fd4780a3dbf # v0.4.0
-      env:
-        GITHUB_TOKEN: ${{ inputs.github-token }}
-      with:
-        github-repository: ${{ github.repository }}
-        pr-number: ${{ inputs.pr-number || github.event.pull_request.number }}
-        title: ${{ inputs.release-notes-tag }}
-        skip-labels: ${{ inputs.release-notes-skip-labels }}
-        skip-placeholders: ${{ inputs.release-notes-skip-placeholders }}
 
     - name: Evaluate results
       id: evaluate
       shell: bash
       env:
-        CHECK_RELEASE_NOTES: ${{ inputs.check-release-notes }}
         CHECKS_OUTCOME: ${{ steps.checks.outcome }}
-        RELEASE_NOTES_OUTCOME: ${{ steps.release-notes.outcome }}
       run: |
-        FAILED=0
-
         if [[ "$CHECKS_OUTCOME" == "failure" ]]; then
-          FAILED=1
-        fi
-
-        if [[ "$CHECK_RELEASE_NOTES" == "true" && "$RELEASE_NOTES_OUTCOME" == "failure" ]]; then
-          FAILED=1
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Release Notes | ❌ Fail | Release notes section missing or empty |" >> "$GITHUB_STEP_SUMMARY"
-        elif [[ "$CHECK_RELEASE_NOTES" == "true" && "$RELEASE_NOTES_OUTCOME" == "success" ]]; then
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Release Notes | ✅ Pass | - |" >> "$GITHUB_STEP_SUMMARY"
-        fi
-
-        if [[ "$FAILED" -eq 1 ]]; then
           echo "result=fail" >> "$GITHUB_OUTPUT"
           exit 1
         fi
-
         echo "result=pass" >> "$GITHUB_OUTPUT"

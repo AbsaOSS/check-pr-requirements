@@ -325,4 +325,15 @@ run_summary_case "config error gets configuration tip" has_config_tip \
     INPUT_PR_TITLE='feat: ok' INPUT_CHECK_TITLE=yes \
     INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false
 
+# ── Release notes inside the summary table ───────────────────────────────────
+
+release_notes_row_counted() {
+    grep -qF '| Release Notes | ❌ Fail |' "$1" && grep -qF '**Result:** 0/1 checks passed' "$1" \
+        && grep -qF '**Release Notes** — add a heading' "$1"
+}
+
+run_summary_case "release notes failure is a counted table row with a tip" release_notes_row_counted \
+    INPUT_RELEASE_NOTES_OUTCOME=failure INPUT_CHECK_RELEASE_NOTES=true \
+    INPUT_CHECK_TITLE=false INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false
+
 print_results "check_orchestrator" || exit 1
