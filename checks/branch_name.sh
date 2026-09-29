@@ -10,7 +10,7 @@ set -euo pipefail
 #                                 required (default: ^[^/]+/[0-9]+- , i.e. a
 #                                 numeric ticket like feature/123-user-login)
 
-DEFAULT_PATTERN='^(feature|bugfix|hotfix|release|support|chore|docs|ci|dependabot)/[a-zA-Z0-9._-]+$'
+DEFAULT_PATTERN='^(feature|bugfix|hotfix|release|support|chore|docs|ci|dependabot)/[a-zA-Z0-9._/-]+$'
 
 BRANCH="${INPUT_PR_BRANCH:?PR branch name is required}"
 REQUIRE_TICKET="${INPUT_BRANCH_REQUIRE_TICKET:-false}"

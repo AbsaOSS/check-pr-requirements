@@ -124,7 +124,7 @@ remediation_for() {
                 echo "- **Issue Reference** — reference an issue in the description, e.g. \`#123\`."
             fi ;;
         "Branch Name")
-            branch_pattern="${INPUT_BRANCH_PATTERN:-^(feature|bugfix|hotfix|release|support|chore|docs|ci|dependabot)/[a-zA-Z0-9._-]+\$}"
+            branch_pattern="${INPUT_BRANCH_PATTERN:-^(feature|bugfix|hotfix|release|support|chore|docs|ci|dependabot)/[a-zA-Z0-9._/-]+\$}"
             echo "- **Branch Name** — the branch name must match $(code "$branch_pattern" -), e.g. \`feature/add-login\`."
             if [[ "${INPUT_BRANCH_REQUIRE_TICKET:-false}" == "true" ]]; then
                 branch_ticket="${INPUT_BRANCH_TICKET_PATTERN:-^[^/]+/[0-9]+-}"
