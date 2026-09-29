@@ -139,7 +139,10 @@ remediation_for() {
             fi ;;
         "PR Size")
             max_files="${INPUT_MAX_FILES_CHANGED:-$DEFAULT_MAX_FILES_CHANGED}"
-            echo "- **PR Size** — keep changed files at or below $(code "$max_files" 50); split larger changes into smaller PRs." ;;
+            echo "- **PR Size** — keep changed files at or below $(code "$max_files" 50); split larger changes into smaller PRs."
+            if [[ -n "${INPUT_MAX_LINES_CHANGED:-}" ]]; then
+                echo "  - Keep changed lines (additions + deletions) at or below $(code "$INPUT_MAX_LINES_CHANGED" -)."
+            fi ;;
         "Label Presence")
             req_labels="${INPUT_REQUIRED_LABELS:-}"
             if [[ -n "$req_labels" ]]; then
