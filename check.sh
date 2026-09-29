@@ -101,8 +101,14 @@ remediation_for() {
             echo "- **PR Title** — the title must match one of these formats: $(code "$title_formats" conventional)."
             if [[ ",$title_formats," == *",conventional,"* ]]; then
                 echo "  - Allowed conventional types: $(code "$title_types" "feat, fix, ...")."
+                if [[ "$(to_lower "${INPUT_TITLE_REQUIRE_SCOPE:-false}")" == "true" ]]; then
+                    echo "  - A scope is required, e.g. \`feat(api): add retry logic\`."
+                fi
                 echo "  - ✅ \`feat: add retry logic\`"
                 echo "  - ❌ \`added retry logic\`"
+            fi
+            if [[ -n "${INPUT_TITLE_MAX_LENGTH:-}" ]]; then
+                echo "  - Keep the title at or below $(code "$INPUT_TITLE_MAX_LENGTH" -) characters."
             fi ;;
         "PR Description")
             desc_min="${INPUT_DESCRIPTION_MIN_LENGTH:-$DEFAULT_DESCRIPTION_MIN_LENGTH}"

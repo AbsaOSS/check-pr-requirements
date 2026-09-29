@@ -96,6 +96,14 @@ inputs:
     description: "Regex the title must match (custom format)"
     required: false
     default: ""
+  title-require-scope:
+    description: "Require a scope in conventional titles, e.g. feat(api): ..."
+    required: false
+    default: "false"
+  title-max-length:
+    description: "Maximum title length in characters, applied to every format (empty = unlimited)"
+    required: false
+    default: ""
   description-min-length:
     description: "Minimum PR description length in characters"
     required: false
@@ -225,6 +233,8 @@ runs:
         INPUT_TITLE_TYPES: ${{ inputs.title-types }}
         INPUT_TITLE_SCOPES: ${{ inputs.title-scopes }}
         INPUT_TITLE_PATTERN: ${{ inputs.title-pattern }}
+        INPUT_TITLE_REQUIRE_SCOPE: ${{ inputs.title-require-scope }}
+        INPUT_TITLE_MAX_LENGTH: ${{ inputs.title-max-length }}
         INPUT_DESCRIPTION_MIN_LENGTH: ${{ inputs.description-min-length }}
         INPUT_DESCRIPTION_REQUIRED_SECTIONS: ${{ inputs.description-required-sections }}
         INPUT_DESCRIPTION_IGNORE_COMMENTS: ${{ inputs.description-ignore-comments }}
