@@ -46,3 +46,13 @@ csv_contains_ignore_case() {
     done
     return 1
 }
+
+# Fail the check with a clear message when PR data needed by it is missing,
+# e.g. when the workflow does not run on a pull_request event.
+require_pr_data() {
+    local value="$1" input_name="$2"
+    if [[ -z "$value" ]]; then
+        echo "fail: input '${input_name}' is empty (run on a pull_request event or pass it explicitly)"
+        exit 1
+    fi
+}

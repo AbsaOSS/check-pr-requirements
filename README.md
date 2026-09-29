@@ -35,13 +35,6 @@ jobs:
       - name: Check PR requirements
         uses: AbsaOSS/check-pr-requirements@v0.1.0
         with:
-          pr-title: ${{ github.event.pull_request.title }}
-          pr-body: ${{ github.event.pull_request.body }}
-          pr-branch: ${{ github.event.pull_request.head.ref }}
-          pr-number: ${{ github.event.pull_request.number }}
-          target-branch: ${{ github.event.pull_request.base.ref }}
-          files-changed: ${{ github.event.pull_request.changed_files }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           check-title: "true"
           check-description: "true"
           check-issue-reference: "true"
@@ -55,7 +48,6 @@ Only check what you need:
 ```yaml
 - uses: AbsaOSS/check-pr-requirements@v0.1.0
   with:
-    pr-title: ${{ github.event.pull_request.title }}
     check-title: "true"
     check-description: "false"
     check-issue-reference: "false"
@@ -65,17 +57,21 @@ Only check what you need:
 
 ### PR Data
 
-| Input | Required | Description |
-|-------|----------|-------------|
-| `pr-title` | Yes | Pull request title |
-| `pr-body` | No | Pull request body/description |
-| `pr-branch` | No | Source branch name |
-| `pr-author` | No | PR author login (used with `skip-actors`) |
-| `pr-number` | No | Pull request number |
-| `target-branch` | No | Target branch name |
-| `files-changed` | No | Number of files changed |
-| `labels` | No | Comma-separated list of PR labels |
-| `github-token` | No | GitHub token (required for release notes check) |
+PR data is read from the `pull_request` event by default, so these inputs are only needed to override it (e.g. on other event types).
+
+| Input | Default | Description |
+|-------|---------|-------------|
+| `pr-title` | `github.event.pull_request.title` | Pull request title |
+| `pr-body` | `github.event.pull_request.body` | Pull request body/description |
+| `pr-branch` | `github.event.pull_request.head.ref` | Source branch name |
+| `pr-author` | `github.event.pull_request.user.login` | PR author login (used with `skip-actors`) |
+| `pr-number` | `github.event.pull_request.number` | Pull request number |
+| `target-branch` | `github.event.pull_request.base.ref` | Target branch name |
+| `files-changed` | `github.event.pull_request.changed_files` | Number of files changed |
+| `labels` | PR label names joined with `,` | Comma-separated list of PR labels |
+| `github-token` | `github.token` | GitHub token (used by the release notes check) |
+
+A check whose PR data is empty fails with a message naming the missing input.
 
 ### Check Configuration
 

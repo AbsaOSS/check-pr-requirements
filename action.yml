@@ -7,42 +7,43 @@ branding:
   color: "green"
 
 inputs:
-  # PR data
+  # PR data (defaults read the pull_request event; pass explicit values to override)
   pr-title:
     description: "Pull request title"
-    required: true
+    required: false
+    default: ${{ github.event.pull_request.title }}
   pr-body:
     description: "Pull request body/description"
     required: false
-    default: ""
+    default: ${{ github.event.pull_request.body }}
   pr-branch:
     description: "Source branch name"
     required: false
-    default: ""
+    default: ${{ github.event.pull_request.head.ref }}
   pr-number:
     description: "Pull request number"
     required: false
-    default: ""
+    default: ${{ github.event.pull_request.number }}
   target-branch:
     description: "Target branch name"
     required: false
-    default: ""
+    default: ${{ github.event.pull_request.base.ref }}
   files-changed:
     description: "Number of files changed"
     required: false
-    default: "0"
+    default: ${{ github.event.pull_request.changed_files }}
   labels:
     description: "Comma-separated list of PR labels"
     required: false
-    default: ""
+    default: ${{ join(github.event.pull_request.labels.*.name, ',') }}
   pr-author:
     description: "PR author login (used with skip-actors to bypass checks for bots)"
     required: false
-    default: ""
+    default: ${{ github.event.pull_request.user.login }}
   github-token:
-    description: "GitHub token for API access (required for release notes check)"
+    description: "GitHub token for API access (used by the release notes check)"
     required: false
-    default: ""
+    default: ${{ github.token }}
 
   # Check toggles
   check-title:

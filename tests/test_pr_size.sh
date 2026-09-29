@@ -40,4 +40,7 @@ INPUT_FILES_CHANGED="999" \
 INPUT_FILES_CHANGED="5" INPUT_MAX_FILES_CHANGED="ten" \
     assert_config_error "non-numeric max files changed" "$CHECK"
 
+INPUT_FILES_CHANGED="" INPUT_MAX_FILES_CHANGED="" \
+    assert_output_contains "missing files-changed names the input" "$CHECK" "input 'files-changed' is empty"
+
 print_results "pr_size" || exit 1

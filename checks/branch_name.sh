@@ -13,7 +13,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib.sh"
 
-BRANCH="${INPUT_PR_BRANCH:?PR branch name is required}"
+BRANCH="${INPUT_PR_BRANCH:-}"
+require_pr_data "$BRANCH" "pr-branch"
 REQUIRE_TICKET="${INPUT_BRANCH_REQUIRE_TICKET:-false}"
 
 PATTERN="${INPUT_BRANCH_PATTERN:-$DEFAULT_BRANCH_PATTERN}"
