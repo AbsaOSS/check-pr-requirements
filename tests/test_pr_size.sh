@@ -35,4 +35,7 @@ INPUT_MAX_FILES_CHANGED="" \
 INPUT_FILES_CHANGED="999" \
     assert_fail "way over limit" "$CHECK"
 
+INPUT_FILES_CHANGED="" INPUT_MAX_FILES_CHANGED="" \
+    assert_output_contains "missing files-changed names the input" "$CHECK" "input 'files-changed' is empty"
+
 print_results "pr_size" || exit 1

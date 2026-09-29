@@ -13,7 +13,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib.sh"
 
-TITLE="${INPUT_PR_TITLE:?PR title is required}"
+TITLE="${INPUT_PR_TITLE:-}"
+require_pr_data "$TITLE" "pr-title"
 FORMATS="${INPUT_TITLE_FORMATS:-$DEFAULT_TITLE_FORMATS}"
 TYPES="${INPUT_TITLE_TYPES:-$DEFAULT_TITLE_TYPES}"
 SCOPES="${INPUT_TITLE_SCOPES:-}"

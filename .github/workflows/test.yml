@@ -164,3 +164,34 @@ jobs:
             echo "Expected skipped=true and result=pass, got skipped=$SKIPPED result=$RESULT"
             exit 1
           fi
+
+  integration-test-event-defaults:
+    name: Integration - Event Defaults
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run without PR data inputs (read from the event)
+        id: check
+        uses: ./
+        continue-on-error: true
+        with:
+          check-title: "false"
+          check-description: "false"
+          check-issue-reference: "false"
+          check-target-branch: "true"
+          allowed-target-branches: "*"
+          check-pr-size: "true"
+          max-files-changed: "0"
+
+      - name: Verify target branch passed and PR size failed on real data
+        env:
+          PASS_COUNT: ${{ steps.check.outputs.pass-count }}
+          FAIL_COUNT: ${{ steps.check.outputs.fail-count }}
+        run: |
+          if [[ "$PASS_COUNT" != "1" || "$FAIL_COUNT" != "1" ]]; then
+            echo "Expected 1 pass (target-branch) and 1 fail (pr-size), got pass=$PASS_COUNT fail=$FAIL_COUNT"
+            exit 1
+          fi

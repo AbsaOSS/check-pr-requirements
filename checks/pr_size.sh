@@ -9,7 +9,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib.sh"
 
-FILES="${INPUT_FILES_CHANGED:?Files changed count is required}"
+FILES="${INPUT_FILES_CHANGED:-}"
+require_pr_data "$FILES" "files-changed"
 MAX="${INPUT_MAX_FILES_CHANGED:-$DEFAULT_MAX_FILES_CHANGED}"
 
 if ! [[ "$FILES" =~ ^[0-9]+$ ]]; then
