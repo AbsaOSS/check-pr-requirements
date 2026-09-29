@@ -73,6 +73,7 @@ REGISTRY=(
     "INPUT_CHECK_PR_SIZE|false|PR Size|pr_size.sh"
     "INPUT_CHECK_LABEL|false|Label Presence|label_presence.sh"
     "INPUT_CHECK_TARGET_BRANCH|false|Target Branch|target_branch.sh"
+    "INPUT_CHECK_RELEASE_NOTES|false|Release Notes|release_notes.sh"
 )
 
 # ── Remediation tips ──────────────────────────────────────────────────────────
@@ -138,6 +139,11 @@ remediation_for() {
         "Target Branch")
             targets="${INPUT_ALLOWED_TARGET_BRANCHES:-$DEFAULT_ALLOWED_TARGET_BRANCHES}"
             echo "- **Target Branch** — retarget the PR to an allowed branch: $(code "$targets" "main, master")." ;;
+        "Release Notes")
+            echo "- **Release Notes** — add a heading matching $(code "${INPUT_RELEASE_NOTES_TAG:-$DEFAULT_RELEASE_NOTES_TAG}" -) followed directly by a bullet list, e.g. \`- Added retry logic\`."
+            if [[ -n "${INPUT_RELEASE_NOTES_SKIP_LABELS-$DEFAULT_RELEASE_NOTES_SKIP_LABELS}" ]]; then
+                echo "  - If the change needs no release notes, add a label: $(code "${INPUT_RELEASE_NOTES_SKIP_LABELS-$DEFAULT_RELEASE_NOTES_SKIP_LABELS}" -)."
+            fi ;;
         "Warn Checks")
             echo "- **Warn Checks** — list only known check ids in \`warn-checks\`: ${KNOWN_IDS[*]}." ;;
         *)
@@ -326,7 +332,8 @@ for i in "${!CHECK_NAMES[@]}"; do
             echo "  🟡 ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}"
             warn_msg="${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]#fail: }"
             warn_msg="${warn_msg//'%'/%25}"
-            warn_msg="${warn_msg//$''/%0D}"
+            warn_msg="${warn_msg//$'
+'/%0D}"
             warn_msg="${warn_msg//$'
 '/%0A}"
             echo "::warning::${warn_msg}" ;;
