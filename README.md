@@ -11,7 +11,7 @@ A configurable GitHub Action that validates pull request properties against a se
 | `check-issue-reference` | `true` | PR references a GitHub issue (`#123`, `org/repo#123`, `Fixes #123`, issue URL) or Azure Boards work item (`AB#12345`) |
 | `check-release-notes` | `false` | PR body contains release notes section (uses [AbsaOSS/release-notes-presence-check](https://github.com/AbsaOSS/release-notes-presence-check)); its result is part of the summary table and counts |
 | `check-branch-name` | `false` | Source branch follows naming convention |
-| `check-pr-size` | `false` | PR does not exceed maximum file change count |
+| `check-pr-size` | `false` | PR does not exceed maximum file change count and, optionally, changed line count |
 | `check-label` | `false` | PR has required labels |
 | `check-target-branch` | `false` | PR targets an allowed branch |
 
@@ -68,6 +68,8 @@ PR data is read from the `pull_request` event by default, so these inputs are on
 | `pr-number` | `github.event.pull_request.number` | Pull request number |
 | `target-branch` | `github.event.pull_request.base.ref` | Target branch name |
 | `files-changed` | `github.event.pull_request.changed_files` | Number of files changed |
+| `additions` | `github.event.pull_request.additions` | Lines added (used with `max-lines-changed`) |
+| `deletions` | `github.event.pull_request.deletions` | Lines deleted (used with `max-lines-changed`) |
 | `labels` | PR label names joined with `,` | Comma-separated list of PR labels |
 | `github-token` | `github.token` | GitHub token (used by the release notes check) |
 
@@ -92,6 +94,7 @@ A check whose PR data is empty fails with a message naming the missing input.
 | `branch-require-ticket` | `false` | Require a ticket after the branch prefix (`feature/123-user-login`) |
 | `branch-ticket-pattern` | `^[^/]+/[0-9]+-` | Regex the branch must match when `branch-require-ticket` is true. Override for non-numeric schemes, e.g. `^[^/]+/[A-Z]+-[0-9]+-` for `feature/PROJ-123-...` |
 | `max-files-changed` | `50` | Maximum files changed |
+| `max-lines-changed` | *(empty = no limit)* | Maximum changed lines (additions + deletions); the size check fails if either limit is exceeded |
 | `required-labels` | *(empty = any label)* | Required label names, matched ignoring case, e.g. `bug,enhancement` |
 | `allowed-target-branches` | `main,master` | Allowed target branches; glob patterns supported (`main,support/*`) |
 | `skip-actors` | *(empty = no bypass)* | Comma-separated PR-author logins (ignoring case) that bypass **all** checks (needs `pr-author` wired), e.g. `dependabot[bot]` |
