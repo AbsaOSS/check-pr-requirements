@@ -9,7 +9,7 @@ A configurable GitHub Action that validates pull request properties against a se
 | `check-title` | `true` | PR title matches an allowed format: [Conventional Commits](https://www.conventionalcommits.org/), issue-number prefix (`#123: Title`), or custom regex |
 | `check-description` | `true` | PR body meets minimum length and contains required sections |
 | `check-issue-reference` | `true` | PR references a GitHub issue (`#123`, `org/repo#123`, `Fixes #123`, issue URL) or Azure Boards work item (`AB#12345`) |
-| `check-release-notes` | `false` | PR body contains release notes section (uses [AbsaOSS/release-notes-presence-check](https://github.com/AbsaOSS/release-notes-presence-check)) |
+| `check-release-notes` | `false` | PR body contains release notes section (uses [AbsaOSS/release-notes-presence-check](https://github.com/AbsaOSS/release-notes-presence-check)); its result is part of the summary table and counts |
 | `check-branch-name` | `false` | Source branch follows naming convention |
 | `check-pr-size` | `false` | PR does not exceed maximum file change count |
 | `check-label` | `false` | PR has required labels |
