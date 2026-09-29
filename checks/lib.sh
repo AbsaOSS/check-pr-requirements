@@ -3,6 +3,8 @@
 # Shared helpers for check scripts.
 # Usage: source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
+source "$(dirname "${BASH_SOURCE[0]}")/defaults.sh"
+
 # Trim leading and trailing whitespace from $1, print result.
 trim() {
     local s="$1"

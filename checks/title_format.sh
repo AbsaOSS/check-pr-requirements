@@ -14,8 +14,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib.sh"
 
 TITLE="${INPUT_PR_TITLE:?PR title is required}"
-FORMATS="${INPUT_TITLE_FORMATS:-conventional}"
-TYPES="${INPUT_TITLE_TYPES:-feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert}"
+FORMATS="${INPUT_TITLE_FORMATS:-$DEFAULT_TITLE_FORMATS}"
+TYPES="${INPUT_TITLE_TYPES:-$DEFAULT_TITLE_TYPES}"
 SCOPES="${INPUT_TITLE_SCOPES:-}"
 CUSTOM_PATTERN="${INPUT_TITLE_PATTERN:-}"
 

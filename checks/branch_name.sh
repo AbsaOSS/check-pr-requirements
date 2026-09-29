@@ -10,19 +10,20 @@ set -euo pipefail
 #                                 required (default: ^[^/]+/[0-9]+- , i.e. a
 #                                 numeric ticket like feature/123-user-login)
 
-DEFAULT_PATTERN='^(feature|bugfix|hotfix|release|support|chore|docs|ci|dependabot)/[a-zA-Z0-9._/-]+$'
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib.sh"
 
 BRANCH="${INPUT_PR_BRANCH:?PR branch name is required}"
 REQUIRE_TICKET="${INPUT_BRANCH_REQUIRE_TICKET:-false}"
 
-PATTERN="${INPUT_BRANCH_PATTERN:-$DEFAULT_PATTERN}"
+PATTERN="${INPUT_BRANCH_PATTERN:-$DEFAULT_BRANCH_PATTERN}"
 
 if [[ ! "$BRANCH" =~ $PATTERN ]]; then
     echo "fail: branch name '$BRANCH' does not match pattern '$PATTERN'"
     exit 1
 fi
 
-TICKET_PATTERN="${INPUT_BRANCH_TICKET_PATTERN:-^[^/]+/[0-9]+-}"
+TICKET_PATTERN="${INPUT_BRANCH_TICKET_PATTERN:-$DEFAULT_BRANCH_TICKET_PATTERN}"
 if [[ "$REQUIRE_TICKET" == "true" ]] && [[ ! "$BRANCH" =~ $TICKET_PATTERN ]]; then
     echo "fail: branch name '$BRANCH' must include a ticket after the prefix (expected pattern '$TICKET_PATTERN', e.g. feature/123-user-login)"
     exit 1
