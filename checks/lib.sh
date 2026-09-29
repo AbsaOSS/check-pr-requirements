@@ -87,6 +87,7 @@ require_whole_number() {
 require_valid_regex() {
     local pattern="$1" input_name="$2"
     local match_status=0
+    # shellcheck disable=SC2319 # the [[ ]] status is the point: 2 means an invalid regex
     [[ "" =~ $pattern ]] || match_status=$?
     if [[ "$match_status" -eq 2 ]]; then
         config_error "input '${input_name}' is not a valid regular expression: '${pattern}'"
