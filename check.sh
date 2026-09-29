@@ -27,13 +27,12 @@ inert() { printf '%s' "$1" | tr '\n' ' ' | tr -d '`'; }
 
 emit_skip() {
     local subject="$1" value="$2" input_name="$3"
-    local value_text
+    local value_text skip_summary
     value_text="$(inert "$value")"
-    {
-        echo "## PR Requirements Check"
-        echo ""
-        echo "Checks skipped: ${subject} \`${value_text}\` matched \`${input_name}\`."
-    } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+    skip_summary="## PR Requirements Check"$'\n\n'"Checks skipped: ${subject} \`${value_text}\` matched \`${input_name}\`."
+    printf '%s\n' "$skip_summary" >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+    set_output "summary" "$skip_summary"
+    set_output "failed-checks" ""
     set_output "result" "pass"
     set_output "pass-count" "0"
     set_output "fail-count" "0"
@@ -168,6 +167,7 @@ remediation_for() {
 declare -a CHECK_NAMES=()
 declare -a CHECK_RESULTS=()
 declare -a CHECK_MESSAGES=()
+declare -a CHECK_IDS=()
 FAIL_COUNT=0
 PASS_COUNT=0
 WARN_COUNT=0
@@ -176,7 +176,8 @@ WARN_CHECKS="${INPUT_WARN_CHECKS:-}"
 # result is pass, fail (the PR breaks a rule), warn (a failure of a check
 # listed in warn-checks, which does not block) or error (invalid configuration)
 record_result() {
-    local name="$1" result="$2" message="$3"
+    local name="$1" result="$2" message="$3" check_id="${4:-}"
+    CHECK_IDS+=("$check_id")
     CHECK_NAMES+=("$name")
     CHECK_RESULTS+=("$result")
     CHECK_MESSAGES+=("$message")
@@ -192,7 +193,7 @@ run_check() {
     local script="${CHECKS_DIR}/$2"
 
     if [[ ! -f "$script" ]]; then
-        record_result "$name" "error" "check script not found: $script"
+        record_result "$name" "error" "check script not found: $script" "$check_id"
         return
     fi
 
@@ -201,13 +202,13 @@ run_check() {
     exit_code=$?
 
     case "$exit_code" in
-        0) record_result "$name" "pass" "$output" ;;
-        "$CONFIG_ERROR_EXIT") record_result "$name" "error" "$output" ;;
+        0) record_result "$name" "pass" "$output" "$check_id" ;;
+        "$CONFIG_ERROR_EXIT") record_result "$name" "error" "$output" "$check_id" ;;
         *)
             if csv_contains_ignore_case "$check_id" "$WARN_CHECKS"; then
-                record_result "$name" "warn" "$output"
+                record_result "$name" "warn" "$output" "$check_id"
             else
-                record_result "$name" "fail" "$output"
+                record_result "$name" "fail" "$output" "$check_id"
             fi ;;
     esac
 }
@@ -243,14 +244,15 @@ for entry in "${REGISTRY[@]}"; do
         true) run_check "$display_name" "$script_name" "$(check_id_of "$env_var")" ;;
         false) ;;
         *) record_result "$display_name" "error" \
-            "config error: input '$(input_name_of "$env_var")' must be true or false, got '${toggle}'" ;;
+            "config error: input '$(input_name_of "$env_var")' must be true or false, got '${toggle}'" \
+            "$(check_id_of "$env_var")" ;;
     esac
 done
 
 # ── Summary ──────────────────────────────────────────────────────────────────
 TOTAL=$((PASS_COUNT + FAIL_COUNT + WARN_COUNT))
 
-{
+SUMMARY_MARKDOWN="$({
     echo "## PR Requirements Check"
     echo ""
     echo "| Check | Status | Details |"
@@ -303,7 +305,8 @@ TOTAL=$((PASS_COUNT + FAIL_COUNT + WARN_COUNT))
             esac
         done
     fi
-} >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+})"
+printf '%s\n' "$SUMMARY_MARKDOWN" >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
 
 if [[ "$FAIL_COUNT" -eq 0 ]]; then
     RESULT="pass"
@@ -318,7 +321,49 @@ set_output "total-count" "$TOTAL"
 set_output "skipped" "false"
 set_output "skip-reason" ""
 
-# CLI output
+failed_check_ids=""
+for i in "${!CHECK_NAMES[@]}"; do
+    if [[ "${CHECK_RESULTS[$i]}" == "fail" || "${CHECK_RESULTS[$i]}" == "error" ]] && [[ -n "${CHECK_IDS[$i]}" ]]; then
+        failed_check_ids+="${CHECK_IDS[$i]},"
+    fi
+done
+set_output "failed-checks" "${failed_check_ids%,}"
+set_output "summary" "$SUMMARY_MARKDOWN"
+
+# ── Annotations ──────────────────────────────────────────────────────────────
+# Shown in the PR checks UI. Values are escaped per the workflow command spec
+# so PR-controlled text cannot end the command early.
+escape_command_data() {
+    local value="$1"
+    value="${value//'%'/%25}"
+    value="${value//$'\r'/%0D}"
+    value="${value//$'\n'/%0A}"
+    printf '%s' "$value"
+}
+
+escape_command_property() {
+    local value
+    value="$(escape_command_data "$1")"
+    value="${value//:/%3A}"
+    value="${value//,/%2C}"
+    printf '%s' "$value"
+}
+
+if [[ "$(to_lower "${INPUT_ANNOTATIONS:-true}")" != "false" ]]; then
+    for i in "${!CHECK_NAMES[@]}"; do
+        case "${CHECK_RESULTS[$i]}" in
+            fail|error) command="error" ;;
+            warn) command="warning" ;;
+            *) continue ;;
+        esac
+        echo "::${command} title=$(escape_command_property "${CHECK_NAMES[$i]}")::$(escape_command_data "${CHECK_MESSAGES[$i]#fail: }")"
+    done
+fi
+
+# ── CLI output ───────────────────────────────────────────────────────────────
+# Workflow commands are disabled while PR-controlled messages are printed.
+stop_commands_token="check-pr-requirements-${RANDOM}${RANDOM}${RANDOM}"
+echo "::stop-commands::${stop_commands_token}"
 echo ""
 echo "PR Requirements: ${PASS_COUNT}/${TOTAL} passed"
 for i in "${!CHECK_NAMES[@]}"; do
@@ -329,6 +374,7 @@ for i in "${!CHECK_NAMES[@]}"; do
         error) echo "  ⚠️ ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
     esac
 done
+echo "::${stop_commands_token}::"
 
 if [[ "$FAIL_COUNT" -gt 0 ]]; then
     exit 1

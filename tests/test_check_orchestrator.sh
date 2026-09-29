@@ -364,4 +364,55 @@ run_summary_case "unknown warn-checks id is a config error" unknown_warn_check \
     INPUT_PR_TITLE='feat: ok' INPUT_WARN_CHECKS='size' \
     INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false
 
+# ── Annotations, outputs and log hardening ───────────────────────────────────
+
+run_orchestrator "contains:::error title=PR Title::title 'bad title'" "failed check emits an error annotation" \
+    "INPUT_PR_TITLE=bad title" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
+run_orchestrator "contains:::warning title=PR Title::" "warn-only check emits a warning annotation" \
+    "INPUT_PR_TITLE=bad title" "INPUT_WARN_CHECKS=title" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
+run_orchestrator "contains:title 'bad 100%25 title'" "annotation escapes percent signs" \
+    "INPUT_PR_TITLE=bad 100% title" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
+run_orchestrator "contains:::stop-commands::check-pr-requirements-" "CLI output runs with workflow commands stopped" \
+    "INPUT_PR_TITLE=bad title" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
+no_annotations() { ! grep -q '^::error' "$1"; }
+run_annotations_off_case() {
+    ((TESTS_TOTAL++))
+    local stdout_file
+    stdout_file="$(mktemp)"
+    env -i PATH="$PATH" HOME="$HOME" GITHUB_STEP_SUMMARY=/dev/null GITHUB_OUTPUT=/dev/null \
+        INPUT_PR_TITLE='bad title' INPUT_ANNOTATIONS=false \
+        INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false \
+        bash "$CHECK" > "$stdout_file" 2>&1
+    if no_annotations "$stdout_file"; then
+        echo "  ✅ annotations=false emits no annotations"
+        ((TESTS_PASSED++))
+    else
+        echo "  ❌ annotations=false emits no annotations"
+        ((TESTS_FAILED++))
+    fi
+    rm -f "$stdout_file"
+}
+run_annotations_off_case
+
+failed_checks_listed() { output_has failed-checks 'title,description' "$@"; }
+summary_output_has_table() { grep -A3 -E '^summary<<' "$2" | grep -qF '| Check | Status | Details |'; }
+
+run_summary_case "failed-checks lists failed check ids" failed_checks_listed \
+    INPUT_PR_TITLE='bad title' INPUT_PR_BODY='' INPUT_CHECK_ISSUE_REFERENCE=false
+
+run_summary_case "summary output carries the markdown table" summary_output_has_table \
+    INPUT_PR_TITLE='bad title' INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false
+
 print_results "check_orchestrator" || exit 1
