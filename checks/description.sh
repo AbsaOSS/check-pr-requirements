@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib.sh"
 
 BODY="${INPUT_PR_BODY:-}"
-MIN_LENGTH="${INPUT_DESCRIPTION_MIN_LENGTH:-20}"
+MIN_LENGTH="${INPUT_DESCRIPTION_MIN_LENGTH:-$DEFAULT_DESCRIPTION_MIN_LENGTH}"
 
 if ! [[ "$MIN_LENGTH" =~ ^[0-9]+$ ]]; then
     echo "fail: invalid min length '$MIN_LENGTH'"
