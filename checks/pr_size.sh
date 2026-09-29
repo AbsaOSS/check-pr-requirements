@@ -18,10 +18,7 @@ if ! [[ "$FILES" =~ ^[0-9]+$ ]]; then
     exit 1
 fi
 
-if ! [[ "$MAX" =~ ^[0-9]+$ ]]; then
-    echo "fail: invalid max files changed '$MAX'"
-    exit 1
-fi
+require_whole_number "$MAX" "max-files-changed"
 
 if [[ "$FILES" -gt "$MAX" ]]; then
     echo "fail: PR changes $FILES files (maximum $MAX)"

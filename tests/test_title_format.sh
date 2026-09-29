@@ -109,4 +109,12 @@ INPUT_TITLE_FORMATS="bogus" INPUT_PR_TITLE="feat: add login" \
 INPUT_TITLE_FORMATS="" INPUT_PR_TITLE="feat: add login" \
     assert_pass "empty formats falls back to conventional default" "$CHECK"
 
+# ── Configuration errors ─────────────────────────────────────────────────────
+
+INPUT_PR_TITLE="[PROJ-1] Title" INPUT_TITLE_FORMATS="custom" INPUT_TITLE_PATTERN="([" \
+    assert_output_contains "invalid custom regex is a config error" "$CHECK" "config error: input 'title-pattern'"
+
+INPUT_PR_TITLE="feat: add login" INPUT_TITLE_FORMATS="semantic" \
+    assert_output_contains "unknown format is a config error" "$CHECK" "config error: unknown title format 'semantic'"
+
 print_results "title_format" || exit 1

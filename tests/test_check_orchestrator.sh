@@ -302,4 +302,27 @@ run_summary_case "label bypass sets skip-reason" skip_reason_label \
 run_summary_case "normal run sets skipped=false" skipped_false \
     INPUT_PR_TITLE='feat: add login #1' INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false
 
+# ── Configuration errors ─────────────────────────────────────────────────────
+
+has_error_row() { grep -qF '| ⚠️ Error | `config error: input' "$1"; }
+has_config_tip() { grep -qF 'action configuration in the workflow file is invalid' "$1"; }
+
+run_orchestrator fail "toggle accepts upper-case True and runs the check" \
+    "INPUT_PR_TITLE=bad title" "INPUT_CHECK_TITLE=True" \
+    "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
+run_orchestrator "contains:input 'check-title' must be true or false" "non-boolean toggle is a config error" \
+    "INPUT_PR_TITLE=feat: ok" "INPUT_CHECK_TITLE=yes" \
+    "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
+run_summary_case "config error renders as Error row" has_error_row \
+    INPUT_PR_TITLE='feat: ok' INPUT_CHECK_TITLE=yes \
+    INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false
+
+run_summary_case "config error gets configuration tip" has_config_tip \
+    INPUT_PR_TITLE='feat: ok' INPUT_CHECK_TITLE=yes \
+    INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false
+
 print_results "check_orchestrator" || exit 1

@@ -56,3 +56,40 @@ require_pr_data() {
         exit 1
     fi
 }
+
+# Exit code a check uses when the workflow configuration is invalid, so the
+# summary blames the configuration rather than the PR.
+CONFIG_ERROR_EXIT=2
+
+config_error() {
+    echo "config error: $1"
+    exit "$CONFIG_ERROR_EXIT"
+}
+
+# Succeed when a boolean input is true in any letter case. Call it directly
+# (not in a subshell) so an invalid value can end the check.
+is_true() {
+    local value="$1" input_name="$2"
+    case "$(to_lower "$value")" in
+        true) return 0 ;;
+        false) return 1 ;;
+        *) config_error "input '${input_name}' must be true or false, got '${value}'" ;;
+    esac
+}
+
+require_whole_number() {
+    local value="$1" input_name="$2"
+    if ! [[ "$value" =~ ^[0-9]+$ ]]; then
+        config_error "input '${input_name}' must be a whole number, got '${value}'"
+    fi
+}
+
+require_valid_regex() {
+    local pattern="$1" input_name="$2"
+    local match_status=0
+    # shellcheck disable=SC2319 # the [[ ]] status is the point: 2 means an invalid regex
+    [[ "" =~ $pattern ]] || match_status=$?
+    if [[ "$match_status" -eq 2 ]]; then
+        config_error "input '${input_name}' is not a valid regular expression: '${pattern}'"
+    fi
+}

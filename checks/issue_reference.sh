@@ -13,6 +13,9 @@ set -euo pipefail
 #                                           GitHub ignores keywords in titles
 #                                           (default: false)
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib.sh"
+
 TITLE="${INPUT_PR_TITLE:-}"
 BODY="${INPUT_PR_BODY:-}"
 REQUIRE_KEYWORD="${INPUT_ISSUE_REFERENCE_REQUIRE_KEYWORD:-false}"
@@ -36,7 +39,7 @@ if contains "$BODY" "$KEYWORD_PATTERN"; then
     exit 0
 fi
 
-if [[ "$REQUIRE_KEYWORD" == "true" ]]; then
+if is_true "$REQUIRE_KEYWORD" "issue-reference-require-keyword"; then
     echo "fail: no keyword issue reference found in the description (expected e.g. 'Fixes #123', 'Closes AB#12345')"
     exit 1
 fi
