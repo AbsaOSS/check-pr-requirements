@@ -8,7 +8,7 @@ A configurable GitHub Action that validates pull request properties against a se
 |-------|---------|-------------|
 | `check-title` | `true` | PR title matches an allowed format: [Conventional Commits](https://www.conventionalcommits.org/), issue-number prefix (`#123: Title`), or custom regex |
 | `check-description` | `true` | PR body meets minimum length and contains required sections |
-| `check-issue-reference` | `true` | PR references a GitHub issue (`#123`, `Fixes #123`, issue URL) or Azure Boards work item (`AB#12345`) |
+| `check-issue-reference` | `true` | PR references a GitHub issue (`#123`, `org/repo#123`, `Fixes #123`, issue URL) or Azure Boards work item (`AB#12345`) |
 | `check-release-notes` | `false` | PR body contains release notes section (uses [AbsaOSS/release-notes-presence-check](https://github.com/AbsaOSS/release-notes-presence-check)) |
 | `check-branch-name` | `false` | Source branch follows naming convention |
 | `check-pr-size` | `false` | PR does not exceed maximum file change count |
@@ -87,7 +87,7 @@ Only check what you need:
 | `title-pattern` | *(empty)* | Regex the title must match (`custom` format), e.g. `^\[[A-Z]+-[0-9]+\] .+` (matches `[PROJ-123] Title`) |
 | `description-min-length` | `20` | Minimum description character count |
 | `description-required-sections` | *(empty = none)* | Comma-separated headings that must appear in the PR body, e.g. `## Overview,## Release Notes` |
-| `issue-reference-require-keyword` | `false` | Only keyword references count (`Fixes #123`, `Closes AB#12345`); bare `#123` / `AB#123` / URLs are rejected |
+| `issue-reference-require-keyword` | `false` | Only keyword references in the PR body count (`Fixes #123`, `Closes AB#12345`), matching what GitHub links; bare `#123` / `AB#123` / URLs and keywords in the title are rejected |
 | `branch-pattern` | `^(feature\|bugfix\|hotfix\|release\|support\|chore\|docs\|ci\|dependabot)/[a-zA-Z0-9._/-]+$` | Full branch name regex override |
 | `branch-require-ticket` | `false` | Require a ticket after the branch prefix (`feature/123-user-login`) |
 | `branch-ticket-pattern` | `^[^/]+/[0-9]+-` | Regex the branch must match when `branch-require-ticket` is true. Override for non-numeric schemes, e.g. `^[^/]+/[A-Z]+-[0-9]+-` for `feature/PROJ-123-...` |
