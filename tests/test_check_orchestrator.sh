@@ -145,6 +145,20 @@ run_orchestrator fail "empty skip-labels disables label bypass" \
     "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=true" "INPUT_CHECK_ISSUE_REFERENCE=true" \
     "${DEFAULTS[@]}"
 
+run_orchestrator pass "skip-actors matches author ignoring case" \
+    "INPUT_PR_TITLE=Bump actions/checkout from 3 to 4" \
+    "INPUT_PR_BODY=" \
+    "INPUT_PR_AUTHOR=Dependabot[bot]" "INPUT_SKIP_ACTORS=dependabot[bot]" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=true" "INPUT_CHECK_ISSUE_REFERENCE=true" \
+    "${DEFAULTS[@]}"
+
+run_orchestrator pass "skip-labels matches label ignoring case" \
+    "INPUT_PR_TITLE=Bump actions/checkout from 3 to 4" \
+    "INPUT_PR_BODY=" \
+    "INPUT_LABELS=Skip-Checks" "INPUT_SKIP_LABELS=skip-checks" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=true" "INPUT_CHECK_ISSUE_REFERENCE=true" \
+    "${DEFAULTS[@]}"
+
 # ── Summary / output sanitization ───────────────────────────────────────────
 
 run_sanitization_case() {
