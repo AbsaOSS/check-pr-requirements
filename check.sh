@@ -113,7 +113,7 @@ remediation_for() {
             fi ;;
         "Issue Reference")
             issue_keyword="${INPUT_ISSUE_REFERENCE_REQUIRE_KEYWORD:-false}"
-            if [[ "$issue_keyword" == "true" ]]; then
+            if [[ "$(to_lower "$issue_keyword")" == "true" ]]; then
                 echo "- **Issue Reference** — reference an issue with a keyword, e.g. \`Closes #123\` or \`Fixes AB#123\`."
             else
                 echo "- **Issue Reference** — reference an issue in the description, e.g. \`#123\`."
@@ -121,7 +121,7 @@ remediation_for() {
         "Branch Name")
             branch_pattern="${INPUT_BRANCH_PATTERN:-$DEFAULT_BRANCH_PATTERN}"
             echo "- **Branch Name** — the branch name must match $(code "$branch_pattern" -), e.g. \`feature/add-login\`."
-            if [[ "${INPUT_BRANCH_REQUIRE_TICKET:-false}" == "true" ]]; then
+            if [[ "$(to_lower "${INPUT_BRANCH_REQUIRE_TICKET:-false}")" == "true" ]]; then
                 branch_ticket="${INPUT_BRANCH_TICKET_PATTERN:-$DEFAULT_BRANCH_TICKET_PATTERN}"
                 echo "  - Must include a ticket after the prefix, matching $(code "$branch_ticket" -), e.g. \`feature/123-add-login\`."
             fi ;;
@@ -156,10 +156,8 @@ WARN_COUNT=0
 # but stay out of pass/fail/total counts
 CONFIG_ERROR_COUNT=0
 
-lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
-
 # Check id derived from the registry toggle, e.g. INPUT_CHECK_PR_SIZE -> pr-size
-check_id_for() { lower "${1#INPUT_CHECK_}" | tr '_' '-'; }
+check_id_for() { to_lower "${1#INPUT_CHECK_}" | tr '_' '-'; }
 
 # Return 0 when $1 equals any of the remaining arguments.
 contains() {
@@ -180,9 +178,12 @@ done
 declare -a WARN_IDS=()
 split_csv "${INPUT_WARN_CHECKS:-}"
 for warn_check in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
-    WARN_IDS+=("$(lower "$warn_check")")
+    WARN_IDS+=("$(to_lower "$warn_check")")
 done
 
+# result is pass, fail (the PR breaks a rule), warn (a fail listed in
+# warn-checks), error (invalid check configuration) or config-error (invalid
+# action-level configuration, kept out of the counts)
 record_result() {
     local name="$1" result="$2" message="$3"
     CHECK_NAMES+=("$name")
@@ -212,13 +213,18 @@ run_check() {
     # Exit 2 is a configuration error: never downgraded to a warning
     if [[ "$exit_code" -eq 0 ]]; then
         record_result "$name" "pass" "$output"
-    elif [[ "$exit_code" -eq 2 ]]; then
+    elif [[ "$exit_code" -eq "$CONFIG_ERROR_EXIT" ]]; then
         record_result "$name" "error" "$output"
     elif contains "$check_id" ${WARN_IDS[@]+"${WARN_IDS[@]}"}; then
         record_result "$name" "warn" "$output"
     else
         record_result "$name" "fail" "$output"
     fi
+}
+
+# INPUT_CHECK_PR_SIZE -> check-pr-size
+input_name_of() {
+    printf '%s' "${1#INPUT_}" | tr '[:upper:]_' '[:lower:]-'
 }
 
 for warn_check in ${WARN_IDS[@]+"${WARN_IDS[@]}"}; do
@@ -229,10 +235,12 @@ done
 
 for idx in "${!REGISTRY[@]}"; do
     IFS='|' read -r env_var default display_name script_name <<< "${REGISTRY[$idx]}"
-    enabled="${!env_var:-$default}"
-    if [[ "$enabled" == "true" ]]; then
-        run_check "$display_name" "$script_name" "${KNOWN_IDS[$idx]}"
-    fi
+    toggle="${!env_var:-$default}"
+    case "$(to_lower "$toggle")" in
+        true) run_check "$display_name" "$script_name" "${KNOWN_IDS[$idx]}" ;;
+        false) ;;
+        *) record_result "$display_name" "error"             "config error: input '$(input_name_of "$env_var")' must be true or false, got '${toggle}'" ;;
+    esac
 done
 
 # ── Summary ──────────────────────────────────────────────────────────────────
@@ -287,9 +295,10 @@ fi
         echo "The checks above must pass before this PR can merge."
         echo ""
         for i in "${!CHECK_NAMES[@]}"; do
-            if [[ "${CHECK_RESULTS[$i]}" != "pass" && "${CHECK_RESULTS[$i]}" != "warn" ]]; then
-                remediation_for "${CHECK_NAMES[$i]}"
-            fi
+            case "${CHECK_RESULTS[$i]}" in
+                fail|config-error) remediation_for "${CHECK_NAMES[$i]}" ;;
+                error) echo "- **${CHECK_NAMES[$i]}** — the action configuration in the workflow file is invalid; fix the input named in the details above." ;;
+            esac
         done
     fi
 } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
@@ -311,21 +320,19 @@ set_output "skip-reason" ""
 echo ""
 echo "PR Requirements: ${PASS_COUNT}/${TOTAL} passed${RESULT_EXTRA}"
 for i in "${!CHECK_NAMES[@]}"; do
-    if [[ "${CHECK_RESULTS[$i]}" == "pass" ]]; then
-        echo "  ✅ ${CHECK_NAMES[$i]}"
-    else
-        case "${CHECK_RESULTS[$i]}" in
-            warn)
-                echo "  🟡 ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}"
-                warn_msg="${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]#fail: }"
-                warn_msg="${warn_msg//'%'/%25}"
-                warn_msg="${warn_msg//$'\r'/%0D}"
-                warn_msg="${warn_msg//$'\n'/%0A}"
-                echo "::warning::${warn_msg}" ;;
-            error|config-error) echo "  ⚠️ ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
-            *) echo "  ❌ ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
-        esac
-    fi
+    case "${CHECK_RESULTS[$i]}" in
+        pass) echo "  ✅ ${CHECK_NAMES[$i]}" ;;
+        warn)
+            echo "  🟡 ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}"
+            warn_msg="${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]#fail: }"
+            warn_msg="${warn_msg//'%'/%25}"
+            warn_msg="${warn_msg//$''/%0D}"
+            warn_msg="${warn_msg//$'
+'/%0A}"
+            echo "::warning::${warn_msg}" ;;
+        error|config-error) echo "  ⚠️ ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
+        *) echo "  ❌ ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
+    esac
 done
 
 if [[ "$BLOCKING_COUNT" -gt 0 ]]; then

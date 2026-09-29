@@ -13,15 +13,9 @@ FILES="${INPUT_FILES_CHANGED:-}"
 require_pr_data "$FILES" "files-changed"
 MAX="${INPUT_MAX_FILES_CHANGED:-$DEFAULT_MAX_FILES_CHANGED}"
 
-if ! [[ "$FILES" =~ ^[0-9]+$ ]]; then
-    echo "error: invalid files changed count '$FILES'"
-    exit 2
-fi
+require_whole_number "$FILES" "files-changed"
 
-if ! [[ "$MAX" =~ ^[0-9]+$ ]]; then
-    echo "error: invalid max files changed '$MAX'"
-    exit 2
-fi
+require_whole_number "$MAX" "max-files-changed"
 
 if [[ "$FILES" -gt "$MAX" ]]; then
     echo "fail: PR changes $FILES files (maximum $MAX)"
