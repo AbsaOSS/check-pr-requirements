@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check PR requirements
-        uses: AbsaOSS/check-pr-requirements@v0.1.0
+        uses: AbsaOSS/check-pr-requirements@v0
         with:
           check-title: "true"
           check-description: "true"
@@ -46,12 +46,27 @@ jobs:
 Only check what you need:
 
 ```yaml
-- uses: AbsaOSS/check-pr-requirements@v0.1.0
+- uses: AbsaOSS/check-pr-requirements@v0
   with:
     check-title: "true"
     check-description: "false"
     check-issue-reference: "false"
 ```
+
+### Versioning
+
+`@v0` follows the latest `v0.x.y` release (the major tag is moved on every release). For the strongest supply-chain guarantee, pin a full commit SHA and let Dependabot update it:
+
+```yaml
+- uses: AbsaOSS/check-pr-requirements@<commit-sha> # v0.x.y
+```
+
+See [CHANGELOG.md](CHANGELOG.md) for behaviour changes between releases.
+
+### Triggers and permissions
+
+- Include `edited` so title/body fixes re-run the checks, and `labeled`/`unlabeled` when using `check-label`, `skip-labels` or `release-notes-skip-labels`.
+- `contents: read` and `pull-requests: write` by default; `comment-on-failure` (on by default) needs the write access. With `comment-on-failure: "false"`, `pull-requests: read` is enough.
 
 ## Inputs
 
@@ -135,6 +150,17 @@ concurrency:
   group: check-pr-requirements-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 ```
+
+## Troubleshooting
+
+| Symptom | Cause and fix |
+|---------|---------------|
+| A check reports `input 'pr-branch' is empty` (or another PR data input) | The workflow does not run on a `pull_request` event, so there is no event data. Run it on `pull_request`, or pass the input explicitly. |
+| A check shows `⚠️ Error` | The workflow configuration is invalid (e.g. a toggle that is not `true`/`false`, a non-numeric limit, an invalid regex). The details name the input to fix. |
+| A check seems to be ignored | Toggles accept only `true`/`false` (any letter case); anything else is reported as a configuration error. Checks listed in `warn-checks` never fail the job. |
+| Re-running an old job still shows the old title/body | Re-runs reuse the original event payload. Edit the PR (which triggers `edited`) or push a commit to get a fresh run. |
+| Fork PRs get no PR comment | The `pull_request` token is read-only for forks, so the comment step fails without failing the job; the job summary and annotations still show the results. |
+| Every check is skipped | The PR author matches `skip-actors` or the PR carries a `skip-labels` label; see the `skip-reason` output. |
 
 ## Adding a New Check
 
