@@ -110,6 +110,12 @@ remediation_for() {
             echo "- **PR Description** — write a description of at least $(code "$desc_min" 20) characters."
             if [[ -n "$desc_sections" ]]; then
                 echo "  - Required sections: $(code "$desc_sections" -)."
+            fi
+            if [[ "$(to_lower "${INPUT_DESCRIPTION_IGNORE_COMMENTS:-false}")" == "true" ]]; then
+                echo "  - Template comments (\`<!-- ... -->\`) do not count; replace them with your own text."
+            fi
+            if [[ "$(to_lower "${INPUT_DESCRIPTION_REQUIRE_SECTION_CONTENT:-false}")" == "true" ]]; then
+                echo "  - Write some text under each required section heading."
             fi ;;
         "Issue Reference")
             issue_keyword="${INPUT_ISSUE_REFERENCE_REQUIRE_KEYWORD:-false}"
