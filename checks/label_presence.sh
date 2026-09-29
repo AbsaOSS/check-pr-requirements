@@ -24,19 +24,10 @@ fi
 
 split_csv "$REQUIRED"
 REQUIRED_ARRAY=(${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"})
-split_csv "$LABELS"
-LABEL_ARRAY=(${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"})
 
 MISSING=()
 for req in ${REQUIRED_ARRAY[@]+"${REQUIRED_ARRAY[@]}"}; do
-    FOUND=false
-    for label in ${LABEL_ARRAY[@]+"${LABEL_ARRAY[@]}"}; do
-        if [[ "$label" == "$req" ]]; then
-            FOUND=true
-            break
-        fi
-    done
-    if [[ "$FOUND" == "false" ]]; then
+    if ! csv_contains_ignore_case "$req" "$LABELS"; then
         MISSING+=("$req")
     fi
 done

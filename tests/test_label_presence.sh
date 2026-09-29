@@ -42,4 +42,12 @@ INPUT_LABELS="bug" INPUT_REQUIRED_LABELS="enhancement" \
 INPUT_LABELS="bug" INPUT_REQUIRED_LABELS="bug,enhancement" \
     assert_fail "missing one of required" "$CHECK"
 
+# ── Case-insensitive matching ────────────────────────────────────────────────
+
+INPUT_LABELS="Bug" INPUT_REQUIRED_LABELS="bug" \
+    assert_pass "required label matches ignoring case" "$CHECK"
+
+INPUT_LABELS="Bug" INPUT_REQUIRED_LABELS="enhancement" \
+    assert_fail "different label still missing" "$CHECK"
+
 print_results "label_presence" || exit 1

@@ -47,29 +47,19 @@ emit_skip() {
 
 PR_AUTHOR="${INPUT_PR_AUTHOR:-}"
 SKIP_ACTORS="${INPUT_SKIP_ACTORS:-}"
-if [[ -n "$PR_AUTHOR" && -n "$SKIP_ACTORS" ]]; then
-    split_csv "$SKIP_ACTORS"
-    for actor in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
-        if [[ "$PR_AUTHOR" == "$actor" ]]; then
-            emit_skip "author" "$PR_AUTHOR" "skip-actors"
-        fi
-    done
+if [[ -n "$PR_AUTHOR" ]] && csv_contains_ignore_case "$PR_AUTHOR" "$SKIP_ACTORS"; then
+    emit_skip "author" "$PR_AUTHOR" "skip-actors"
 fi
 
 PR_LABELS="${INPUT_LABELS:-}"
 SKIP_LABELS="${INPUT_SKIP_LABELS:-}"
-if [[ -n "$PR_LABELS" && -n "$SKIP_LABELS" ]]; then
-    split_csv "$PR_LABELS"
-    labels_arr=(${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"})
-    split_csv "$SKIP_LABELS"
-    for skip in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
-        for lbl in ${labels_arr[@]+"${labels_arr[@]}"}; do
-            if [[ "$lbl" == "$skip" ]]; then
-                emit_skip "label" "$skip" "skip-labels"
-            fi
-        done
-    done
-fi
+split_csv "$SKIP_LABELS"
+skip_label_list=(${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"})
+for skip_label in ${skip_label_list[@]+"${skip_label_list[@]}"}; do
+    if csv_contains_ignore_case "$skip_label" "$PR_LABELS"; then
+        emit_skip "label" "$skip_label" "skip-labels"
+    fi
+done
 
 # ── Check Registry ──────────────────────────────────────────────────────────
 # Format: "env_toggle|default|display_name|script_name"
