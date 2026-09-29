@@ -3,8 +3,8 @@ name: Test
 on:
   push:
     branches: [main, master]
+  # Every PR, including stacked PRs that target another PR's branch
   pull_request:
-    branches: [main, master]
 
 permissions:
   contents: read
