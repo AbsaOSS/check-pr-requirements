@@ -83,6 +83,8 @@ A check whose PR data is empty fails with a message naming the missing input.
 | `title-pattern` | *(empty)* | Regex the title must match (`custom` format), e.g. `^\[[A-Z]+-[0-9]+\] .+` (matches `[PROJ-123] Title`) |
 | `description-min-length` | `20` | Minimum description character count |
 | `description-required-sections` | *(empty = none)* | Comma-separated headings that must appear in the PR body, e.g. `## Overview,## Release Notes` |
+| `description-ignore-comments` | `false` | Ignore `<!-- -->` comments (PR template hints) for the length and section checks, so an untouched template fails |
+| `description-require-section-content` | `false` | Each required section must be a heading line (matched ignoring case) with text under it before the next heading of the same or higher level; comments do not count |
 | `issue-reference-require-keyword` | `false` | Only keyword references in the PR body count (`Fixes #123`, `Closes AB#12345`), matching what GitHub links; bare `#123` / `AB#123` / URLs and keywords in the title are rejected |
 | `branch-pattern` | `^(feature\|bugfix\|hotfix\|release\|support\|chore\|docs\|ci\|dependabot)/[a-zA-Z0-9._/-]+$` | Full branch name regex override |
 | `branch-require-ticket` | `false` | Require a ticket after the branch prefix (`feature/123-user-login`) |

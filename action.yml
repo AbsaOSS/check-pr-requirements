@@ -104,6 +104,14 @@ inputs:
     description: "Comma-separated headings that must appear in the PR body, e.g. '## Release Notes' (empty = none)"
     required: false
     default: ""
+  description-ignore-comments:
+    description: "Ignore <!-- --> comments (e.g. PR template hints) when checking the description"
+    required: false
+    default: "false"
+  description-require-section-content:
+    description: "Each required section must be a heading line followed by text before the next heading"
+    required: false
+    default: "false"
   issue-reference-require-keyword:
     description: "Only keyword issue references count, e.g. 'Fixes #123', 'Closes AB#12345'"
     required: false
@@ -219,6 +227,8 @@ runs:
         INPUT_TITLE_PATTERN: ${{ inputs.title-pattern }}
         INPUT_DESCRIPTION_MIN_LENGTH: ${{ inputs.description-min-length }}
         INPUT_DESCRIPTION_REQUIRED_SECTIONS: ${{ inputs.description-required-sections }}
+        INPUT_DESCRIPTION_IGNORE_COMMENTS: ${{ inputs.description-ignore-comments }}
+        INPUT_DESCRIPTION_REQUIRE_SECTION_CONTENT: ${{ inputs.description-require-section-content }}
         INPUT_ISSUE_REFERENCE_REQUIRE_KEYWORD: ${{ inputs.issue-reference-require-keyword }}
         INPUT_BRANCH_PATTERN: ${{ inputs.branch-pattern }}
         INPUT_BRANCH_REQUIRE_TICKET: ${{ inputs.branch-require-ticket }}
