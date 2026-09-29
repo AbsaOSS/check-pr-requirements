@@ -252,7 +252,9 @@ done
 # ── Summary ──────────────────────────────────────────────────────────────────
 TOTAL=$((PASS_COUNT + FAIL_COUNT + WARN_COUNT))
 
-SUMMARY_MARKDOWN="$({
+# A function rather than an inline $( { ... } ): bash 3.2 (macOS) cannot parse
+# case patterns inside command substitution.
+render_summary() {
     echo "## PR Requirements Check"
     echo ""
     echo "| Check | Status | Details |"
@@ -305,7 +307,9 @@ SUMMARY_MARKDOWN="$({
             esac
         done
     fi
-})"
+}
+
+SUMMARY_MARKDOWN="$(render_summary)"
 printf '%s\n' "$SUMMARY_MARKDOWN" >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
 
 if [[ "$FAIL_COUNT" -eq 0 ]]; then
