@@ -279,7 +279,9 @@ if [[ "$CONFIG_ERROR_COUNT" -gt 0 ]]; then
     RESULT_EXTRA+=", ${CONFIG_ERROR_COUNT} configuration error(s)"
 fi
 
-SUMMARY_MARKDOWN="$({
+# A function rather than an inline $( { ... } ): bash 3.2 (macOS) cannot parse
+# case patterns inside command substitution.
+render_summary() {
     echo "## PR Requirements Check"
     echo ""
     echo "| Check | Status | Details |"
@@ -325,7 +327,9 @@ SUMMARY_MARKDOWN="$({
             esac
         done
     fi
-})"
+}
+
+SUMMARY_MARKDOWN="$(render_summary)"
 printf '%s\n' "$SUMMARY_MARKDOWN" >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
 
 if [[ "$BLOCKING_COUNT" -eq 0 ]]; then
