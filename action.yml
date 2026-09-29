@@ -165,6 +165,12 @@ outputs:
   total-count:
     description: "Total number of checks run"
     value: ${{ steps.checks.outputs.total-count }}
+  skipped:
+    description: "true when all checks were bypassed by skip-actors or skip-labels"
+    value: ${{ steps.checks.outputs.skipped }}
+  skip-reason:
+    description: "Why the checks were bypassed (empty when not skipped)"
+    value: ${{ steps.checks.outputs.skip-reason }}
 
 runs:
   using: "composite"
@@ -205,43 +211,9 @@ runs:
         INPUT_ALLOWED_TARGET_BRANCHES: ${{ inputs.allowed-target-branches }}
       run: bash "${{ github.action_path }}/check.sh"
 
-    - name: Detect bypass
-      id: gate
-      shell: bash
-      env:
-        INPUT_PR_AUTHOR: ${{ inputs.pr-author }}
-        INPUT_SKIP_ACTORS: ${{ inputs.skip-actors }}
-        INPUT_LABELS: ${{ inputs.labels }}
-        INPUT_SKIP_LABELS: ${{ inputs.skip-labels }}
-      run: |
-        skip=false
-        # trim leading/trailing whitespace from $1
-        trim() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; printf '%s' "${s%"${s##*[![:space:]]}"}"; }
-
-        author="${INPUT_PR_AUTHOR:-}"
-        if [[ -n "$author" && -n "${INPUT_SKIP_ACTORS:-}" ]]; then
-          IFS=',' read -ra actors <<< "$INPUT_SKIP_ACTORS"
-          for a in "${actors[@]}"; do
-            if [[ "$author" == "$(trim "$a")" && -n "$(trim "$a")" ]]; then skip=true; fi
-          done
-        fi
-
-        if [[ "$skip" != "true" && -n "${INPUT_LABELS:-}" && -n "${INPUT_SKIP_LABELS:-}" ]]; then
-          IFS=',' read -ra labels <<< "$INPUT_LABELS"
-          IFS=',' read -ra skips <<< "$INPUT_SKIP_LABELS"
-          for s in "${skips[@]}"; do
-            st="$(trim "$s")"; [[ -z "$st" ]] && continue
-            for l in "${labels[@]}"; do
-              if [[ "$(trim "$l")" == "$st" ]]; then skip=true; fi
-            done
-          done
-        fi
-
-        echo "skip=$skip" >> "$GITHUB_OUTPUT"
-
     - name: Check release notes
       id: release-notes
-      if: inputs.check-release-notes == 'true' && steps.gate.outputs.skip != 'true'
+      if: inputs.check-release-notes == 'true' && steps.checks.outputs.skipped != 'true'
       continue-on-error: true
       uses: AbsaOSS/release-notes-presence-check@8e586b26a5e27f899ee8590a5d988fd4780a3dbf # v0.4.0
       env:

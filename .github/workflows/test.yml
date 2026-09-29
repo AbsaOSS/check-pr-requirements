@@ -138,3 +138,29 @@ jobs:
           check-target-branch: "true"
           allowed-target-branches: "main,master,support/*,release/*"
           check-release-notes: "false"
+
+  integration-test-bypass:
+    name: Integration - Bypass
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run with bot author in skip-actors (should pass despite invalid title)
+        id: check
+        uses: ./
+        with:
+          pr-title: "Bump actions/checkout from 6 to 7"
+          pr-author: "dependabot[bot]"
+          skip-actors: "dependabot[bot]"
+          check-release-notes: "true"
+
+      - name: Verify bypass outputs
+        env:
+          SKIPPED: ${{ steps.check.outputs.skipped }}
+          RESULT: ${{ steps.check.outputs.result }}
+        run: |
+          if [[ "$SKIPPED" != "true" || "$RESULT" != "pass" ]]; then
+            echo "Expected skipped=true and result=pass, got skipped=$SKIPPED result=$RESULT"
+            exit 1
+          fi

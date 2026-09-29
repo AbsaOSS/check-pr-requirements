@@ -108,6 +108,12 @@ Only check what you need:
 | `pass-count` | Number of checks passed |
 | `fail-count` | Number of checks failed |
 | `total-count` | Total checks executed |
+| `skipped` | `true` when all checks were bypassed by `skip-actors` or `skip-labels` |
+| `skip-reason` | Why the checks were bypassed, e.g. `author dependabot[bot] matched skip-actors` |
+
+### Bypass trust model
+
+`skip-labels` lets anyone who can label PRs (triage access or higher) bypass **every** check. Use a dedicated label that is not applied by automation, and rely on branch protection reviews for PRs that carry it. `skip-actors` matches the PR author login, so wire `pr-author` to `github.event.pull_request.user.login`, not `github.actor` (the user who triggered the run).
 
 ## Adding a New Check
 

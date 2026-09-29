@@ -26,18 +26,22 @@ set_output() {
 inert() { printf '%s' "$1" | tr '\n' ' ' | tr -d '`'; }
 
 emit_skip() {
-    local reason="$1"
+    local subject="$1" value="$2" input_name="$3"
+    local value_text
+    value_text="$(inert "$value")"
     {
         echo "## PR Requirements Check"
         echo ""
-        echo "Checks skipped: ${reason}."
+        echo "Checks skipped: ${subject} \`${value_text}\` matched \`${input_name}\`."
     } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
     set_output "result" "pass"
     set_output "pass-count" "0"
     set_output "fail-count" "0"
     set_output "total-count" "0"
+    set_output "skipped" "true"
+    set_output "skip-reason" "${subject} ${value_text} matched ${input_name}"
     echo ""
-    echo "PR Requirements: skipped (${reason})"
+    echo "PR Requirements: skipped (${subject} ${value_text} matched ${input_name})"
     exit 0
 }
 
@@ -47,7 +51,7 @@ if [[ -n "$PR_AUTHOR" && -n "$SKIP_ACTORS" ]]; then
     split_csv "$SKIP_ACTORS"
     for actor in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
         if [[ "$PR_AUTHOR" == "$actor" ]]; then
-            emit_skip "author \`$(inert "$PR_AUTHOR")\` matched \`skip-actors\`"
+            emit_skip "author" "$PR_AUTHOR" "skip-actors"
         fi
     done
 fi
@@ -61,7 +65,7 @@ if [[ -n "$PR_LABELS" && -n "$SKIP_LABELS" ]]; then
     for skip in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
         for lbl in ${labels_arr[@]+"${labels_arr[@]}"}; do
             if [[ "$lbl" == "$skip" ]]; then
-                emit_skip "label \`$(inert "$skip")\` matched \`skip-labels\`"
+                emit_skip "label" "$skip" "skip-labels"
             fi
         done
     done
@@ -245,6 +249,8 @@ set_output "result" "$RESULT"
 set_output "pass-count" "$PASS_COUNT"
 set_output "fail-count" "$FAIL_COUNT"
 set_output "total-count" "$TOTAL"
+set_output "skipped" "false"
+set_output "skip-reason" ""
 
 # CLI output
 echo ""
