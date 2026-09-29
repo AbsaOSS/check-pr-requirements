@@ -110,7 +110,7 @@ inputs:
   branch-pattern:
     description: "Full regex override for valid branch names"
     required: false
-    default: "^(feature|bugfix|hotfix|release|support|chore|docs|ci|dependabot)/[a-zA-Z0-9._-]+$"
+    default: "^(feature|bugfix|hotfix|release|support|chore|docs|ci|dependabot)/[a-zA-Z0-9._/-]+$"
   branch-require-ticket:
     description: "Require a ticket after the branch prefix, e.g. feature/123-user-login"
     required: false

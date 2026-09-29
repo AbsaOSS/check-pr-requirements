@@ -88,7 +88,7 @@ Only check what you need:
 | `description-min-length` | `20` | Minimum description character count |
 | `description-required-sections` | *(empty = none)* | Comma-separated headings that must appear in the PR body, e.g. `## Overview,## Release Notes` |
 | `issue-reference-require-keyword` | `false` | Only keyword references count (`Fixes #123`, `Closes AB#12345`); bare `#123` / `AB#123` / URLs are rejected |
-| `branch-pattern` | `^(feature\|bugfix\|hotfix\|release\|support\|chore\|docs\|ci\|dependabot)/[a-zA-Z0-9._-]+$` | Full branch name regex override |
+| `branch-pattern` | `^(feature\|bugfix\|hotfix\|release\|support\|chore\|docs\|ci\|dependabot)/[a-zA-Z0-9._/-]+$` | Full branch name regex override |
 | `branch-require-ticket` | `false` | Require a ticket after the branch prefix (`feature/123-user-login`) |
 | `branch-ticket-pattern` | `^[^/]+/[0-9]+-` | Regex the branch must match when `branch-require-ticket` is true. Override for non-numeric schemes, e.g. `^[^/]+/[A-Z]+-[0-9]+-` for `feature/PROJ-123-...` |
 | `max-files-changed` | `50` | Maximum files changed |

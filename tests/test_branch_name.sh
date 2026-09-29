@@ -35,6 +35,14 @@ INPUT_BRANCH_PATTERN="" \
 INPUT_PR_BRANCH="support/1.0.4" \
     assert_pass "support branch" "$CHECK"
 
+INPUT_BRANCH_PATTERN="" \
+INPUT_PR_BRANCH="dependabot/github_actions/actions/checkout-7.0.0" \
+    assert_pass "nested dependabot branch" "$CHECK"
+
+INPUT_BRANCH_PATTERN="" \
+INPUT_PR_BRANCH="feature/auth/oauth2-login" \
+    assert_pass "nested feature branch" "$CHECK"
+
 # ── Fail cases ───────────────────────────────────────────────────────────────
 
 INPUT_BRANCH_PATTERN="" \
