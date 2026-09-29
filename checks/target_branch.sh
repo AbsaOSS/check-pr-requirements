@@ -11,7 +11,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib.sh"
 
-TARGET="${INPUT_TARGET_BRANCH:?Target branch is required}"
+TARGET="${INPUT_TARGET_BRANCH:-}"
+require_pr_data "$TARGET" "target-branch"
 ALLOWED="${INPUT_ALLOWED_TARGET_BRANCHES:-$DEFAULT_ALLOWED_TARGET_BRANCHES}"
 
 split_csv "$ALLOWED"
