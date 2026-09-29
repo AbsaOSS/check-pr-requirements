@@ -6,8 +6,11 @@ set -euo pipefail
 #   INPUT_FILES_CHANGED    - Number of files changed (required)
 #   INPUT_MAX_FILES_CHANGED - Maximum allowed (default: 50)
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib.sh"
+
 FILES="${INPUT_FILES_CHANGED:?Files changed count is required}"
-MAX="${INPUT_MAX_FILES_CHANGED:-50}"
+MAX="${INPUT_MAX_FILES_CHANGED:-$DEFAULT_MAX_FILES_CHANGED}"
 
 if ! [[ "$FILES" =~ ^[0-9]+$ ]]; then
     echo "fail: invalid files changed count '$FILES'"

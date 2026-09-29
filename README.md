@@ -117,12 +117,11 @@ Only check what you need:
 
 ## Adding a New Check
 
-1. Create `checks/my_check.sh` — reads `INPUT_*` env vars, prints `pass` or `fail: reason`, exits 0 or 1
-2. Add entry to `REGISTRY` array in `check.sh`
-3. Add inputs to `action.yml` (toggle + config)
-4. Add env mapping in `action.yml` composite step
-5. Create `tests/test_my_check.sh`
-6. Add test file to `TEST_FILES` array in `tests/run_tests.sh`
+1. Create `checks/my_check.sh` — sources `lib.sh`, reads `INPUT_*` env vars, prints `pass` or `fail: reason`, exits 0 or 1
+2. Add entry to `REGISTRY` array and a "How to fix" tip to `remediation_for` in `check.sh`
+3. Add inputs to `action.yml` (toggle + config) and their env mapping in the composite step
+4. Put non-trivial config defaults in `checks/defaults.sh` (`tests/test_defaults.sh` checks they match `action.yml`)
+5. Create `tests/test_my_check.sh` — `tests/run_tests.sh` picks up every `tests/test_*.sh` automatically
 
 ## License
 

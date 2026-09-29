@@ -95,8 +95,8 @@ remediation_for() {
 
     case "$1" in
         "PR Title")
-            title_formats="${INPUT_TITLE_FORMATS:-conventional}"
-            title_types="${INPUT_TITLE_TYPES:-feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert}"
+            title_formats="${INPUT_TITLE_FORMATS:-$DEFAULT_TITLE_FORMATS}"
+            title_types="${INPUT_TITLE_TYPES:-$DEFAULT_TITLE_TYPES}"
             echo "- **PR Title** — the title must match one of these formats: $(code "$title_formats" conventional)."
             if [[ ",$title_formats," == *",conventional,"* ]]; then
                 echo "  - Allowed conventional types: $(code "$title_types" "feat, fix, ...")."
@@ -104,7 +104,7 @@ remediation_for() {
                 echo "  - ❌ \`added retry logic\`"
             fi ;;
         "PR Description")
-            desc_min="${INPUT_DESCRIPTION_MIN_LENGTH:-20}"
+            desc_min="${INPUT_DESCRIPTION_MIN_LENGTH:-$DEFAULT_DESCRIPTION_MIN_LENGTH}"
             desc_sections="${INPUT_DESCRIPTION_REQUIRED_SECTIONS:-}"
             echo "- **PR Description** — write a description of at least $(code "$desc_min" 20) characters."
             if [[ -n "$desc_sections" ]]; then
@@ -118,14 +118,14 @@ remediation_for() {
                 echo "- **Issue Reference** — reference an issue in the description, e.g. \`#123\`."
             fi ;;
         "Branch Name")
-            branch_pattern="${INPUT_BRANCH_PATTERN:-^(feature|bugfix|hotfix|release|support|chore|docs|ci|dependabot)/[a-zA-Z0-9._/-]+\$}"
+            branch_pattern="${INPUT_BRANCH_PATTERN:-$DEFAULT_BRANCH_PATTERN}"
             echo "- **Branch Name** — the branch name must match $(code "$branch_pattern" -), e.g. \`feature/add-login\`."
             if [[ "${INPUT_BRANCH_REQUIRE_TICKET:-false}" == "true" ]]; then
-                branch_ticket="${INPUT_BRANCH_TICKET_PATTERN:-^[^/]+/[0-9]+-}"
+                branch_ticket="${INPUT_BRANCH_TICKET_PATTERN:-$DEFAULT_BRANCH_TICKET_PATTERN}"
                 echo "  - Must include a ticket after the prefix, matching $(code "$branch_ticket" -), e.g. \`feature/123-add-login\`."
             fi ;;
         "PR Size")
-            max_files="${INPUT_MAX_FILES_CHANGED:-50}"
+            max_files="${INPUT_MAX_FILES_CHANGED:-$DEFAULT_MAX_FILES_CHANGED}"
             echo "- **PR Size** — keep changed files at or below $(code "$max_files" 50); split larger changes into smaller PRs." ;;
         "Label Presence")
             req_labels="${INPUT_REQUIRED_LABELS:-}"
@@ -135,7 +135,7 @@ remediation_for() {
                 echo "- **Label Presence** — add at least one label to the PR."
             fi ;;
         "Target Branch")
-            targets="${INPUT_ALLOWED_TARGET_BRANCHES:-main,master}"
+            targets="${INPUT_ALLOWED_TARGET_BRANCHES:-$DEFAULT_ALLOWED_TARGET_BRANCHES}"
             echo "- **Target Branch** — retarget the PR to an allowed branch: $(code "$targets" "main, master")." ;;
         *)
             echo "- **$1** — see the check details above and the contributing guidelines." ;;
