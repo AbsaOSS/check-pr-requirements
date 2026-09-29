@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run shellcheck
-        run: shellcheck --severity=warning check.sh checks/*.sh tests/*.sh
+        run: shellcheck --severity=warning check.sh comment.sh checks/*.sh tests/*.sh
 
   actionlint:
     name: actionlint
