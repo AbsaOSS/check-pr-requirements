@@ -269,19 +269,23 @@ run_summary_case "passing run omits How to fix" no_how_to_fix \
 # Predicates receive (summary_file, output_file) from run_summary_case
 output_has() {
     local name="$1" expected_value="$2" output_file="$4"
-    grep -A1 -E "^${name}<<" "$output_file" | grep -qx "$expected_value"
+    grep -A1 -E "^${name}<<" "$output_file" | grep -qxF "$expected_value"
 }
 skipped_true()      { output_has skipped true "$@"; }
 skipped_false()     { output_has skipped false "$@"; }
-skip_reason_actor() { output_has skip-reason 'author dependabot\[bot\] matched skip-actors' "$@"; }
+skip_reason_actor() { output_has skip-reason 'author dependabot[bot] matched skip-actors' "$@"; }
 skip_reason_label() { output_has skip-reason 'label skip-checks matched skip-labels' "$@"; }
 
-run_summary_case "bypassed run sets skipped=true" skipped_true     INPUT_PR_TITLE='Bump x' INPUT_PR_AUTHOR='dependabot[bot]' INPUT_SKIP_ACTORS='dependabot[bot]'
+run_summary_case "bypassed run sets skipped=true" skipped_true \
+    INPUT_PR_TITLE='Bump x' INPUT_PR_AUTHOR='dependabot[bot]' INPUT_SKIP_ACTORS='dependabot[bot]'
 
-run_summary_case "actor bypass sets skip-reason" skip_reason_actor     INPUT_PR_TITLE='Bump x' INPUT_PR_AUTHOR='dependabot[bot]' INPUT_SKIP_ACTORS='dependabot[bot]'
+run_summary_case "actor bypass sets skip-reason" skip_reason_actor \
+    INPUT_PR_TITLE='Bump x' INPUT_PR_AUTHOR='dependabot[bot]' INPUT_SKIP_ACTORS='dependabot[bot]'
 
-run_summary_case "label bypass sets skip-reason" skip_reason_label     INPUT_PR_TITLE='Bump x' INPUT_LABELS='bug,skip-checks' INPUT_SKIP_LABELS='skip-checks'
+run_summary_case "label bypass sets skip-reason" skip_reason_label \
+    INPUT_PR_TITLE='Bump x' INPUT_LABELS='bug,skip-checks' INPUT_SKIP_LABELS='skip-checks'
 
-run_summary_case "normal run sets skipped=false" skipped_false     INPUT_PR_TITLE='feat: add login #1' INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false
+run_summary_case "normal run sets skipped=false" skipped_false \
+    INPUT_PR_TITLE='feat: add login #1' INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false
 
 print_results "check_orchestrator" || exit 1
