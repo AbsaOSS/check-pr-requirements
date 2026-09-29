@@ -81,6 +81,8 @@ A check whose PR data is empty fails with a message naming the missing input.
 | `title-types` | `feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert` | Allowed conventional commit types (`conventional` format) |
 | `title-scopes` | *(empty = any)* | Allowed scopes (`conventional` format), e.g. `api,ui,auth` |
 | `title-pattern` | *(empty)* | Regex the title must match (`custom` format), e.g. `^\[[A-Z]+-[0-9]+\] .+` (matches `[PROJ-123] Title`) |
+| `title-require-scope` | `false` | Require a scope in `conventional` titles, e.g. `feat(api): ...` |
+| `title-max-length` | *(empty = unlimited)* | Maximum title length, applied to every format (e.g. `72` for squash-merge subjects) |
 | `description-min-length` | `20` | Minimum description character count |
 | `description-required-sections` | *(empty = none)* | Comma-separated headings that must appear in the PR body, e.g. `## Overview,## Release Notes` |
 | `description-ignore-comments` | `false` | Ignore `<!-- -->` comments (PR template hints) for the length and section checks, so an untouched template fails |

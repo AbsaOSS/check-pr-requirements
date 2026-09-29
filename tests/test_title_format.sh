@@ -117,4 +117,35 @@ INPUT_PR_TITLE="[PROJ-1] Title" INPUT_TITLE_FORMATS="custom" INPUT_TITLE_PATTERN
 INPUT_PR_TITLE="feat: add login" INPUT_TITLE_FORMATS="semantic" \
     assert_output_contains "unknown format is a config error" "$CHECK" "config error: unknown title format 'semantic'"
 
+# ── Scope requirement and length limit ───────────────────────────────────────
+
+INPUT_PR_TITLE="feat: add login" INPUT_TITLE_REQUIRE_SCOPE="true" \
+    assert_output_contains "missing scope explained" "$CHECK" "a scope is required"
+
+INPUT_PR_TITLE="feat(auth): add login" INPUT_TITLE_REQUIRE_SCOPE="true" \
+    assert_pass "scope present when required" "$CHECK"
+
+INPUT_PR_TITLE="feat: add login" INPUT_TITLE_REQUIRE_SCOPE="false" \
+    assert_pass "scope optional by default" "$CHECK"
+
+INPUT_PR_TITLE="feat: add a very long login flow description" INPUT_TITLE_MAX_LENGTH="20" \
+    assert_output_contains "title over max length" "$CHECK" "maximum 20"
+
+INPUT_PR_TITLE="feat: add login" INPUT_TITLE_MAX_LENGTH="15" \
+    assert_pass "title exactly at max length" "$CHECK"
+
+INPUT_PR_TITLE="feat: add login" INPUT_TITLE_MAX_LENGTH="x" \
+    assert_output_contains "non-numeric max length is a config error" "$CHECK" "config error: input 'title-max-length'"
+
+# ── Specific failure reasons ─────────────────────────────────────────────────
+
+INPUT_PR_TITLE="Feat: add login" \
+    assert_output_contains "wrong-case type explained" "$CHECK" "type 'Feat' is not allowed"
+
+INPUT_PR_TITLE="feat(web): add login" INPUT_TITLE_SCOPES="api,ui" \
+    assert_output_contains "disallowed scope explained" "$CHECK" "scope 'web' is not allowed"
+
+INPUT_PR_TITLE="add login" \
+    assert_output_contains "non-conventional shape explained" "$CHECK" "expected 'type(scope): description'"
+
 print_results "title_format" || exit 1
