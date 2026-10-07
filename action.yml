@@ -103,6 +103,10 @@ inputs:
     description: "Comma-separated list of allowed target branches"
     required: false
     default: "main,master"
+  warn-checks:
+    description: "Comma-separated check ids whose failures are warnings and do not fail the job"
+    required: false
+    default: ""
   release-notes-tag:
     description: "Tag to look for in PR body for release notes"
     required: false
@@ -126,6 +130,9 @@ outputs:
   fail-count:
     description: "Number of checks that failed"
     value: ${{ steps.checks.outputs.fail-count }}
+  warn-count:
+    description: "Number of checks reported as warnings"
+    value: ${{ steps.checks.outputs.warn-count }}
   total-count:
     description: "Total number of checks run"
     value: ${{ steps.checks.outputs.total-count }}
@@ -158,6 +165,7 @@ runs:
         INPUT_MAX_FILES_CHANGED: ${{ inputs.max-files-changed }}
         INPUT_REQUIRED_LABELS: ${{ inputs.required-labels }}
         INPUT_ALLOWED_TARGET_BRANCHES: ${{ inputs.allowed-target-branches }}
+        INPUT_WARN_CHECKS: ${{ inputs.warn-checks }}
       run: bash "${{ github.action_path }}/check.sh"
 
     - name: Check release notes

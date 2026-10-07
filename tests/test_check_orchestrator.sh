@@ -137,4 +137,43 @@ run_sanitization_case "summary strips backticks from details" check_backticks_st
 run_sanitization_case "summary wraps details in code span" check_detail_is_code_span
 run_sanitization_case "GITHUB_OUTPUT uses random delimiter heredoc" check_output_delimiter
 
+# ── Warn-only checks ─────────────────────────────────────────────────────────
+run_orchestrator pass "failing check listed in warn-checks does not fail" \
+    "INPUT_PR_TITLE=bad title" "INPUT_WARN_CHECKS=title" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
+run_orchestrator fail "check absent from warn-checks still fails" \
+    "INPUT_PR_TITLE=bad title" "INPUT_WARN_CHECKS=description" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
+run_warn_summary_case() {
+    local summary_file output_file
+    summary_file="$(mktemp)"
+    output_file="$(mktemp)"
+    ((TESTS_TOTAL++))
+    if env -i PATH="$PATH" HOME="$HOME" GITHUB_STEP_SUMMARY="$summary_file" GITHUB_OUTPUT="$output_file" \
+        INPUT_PR_TITLE='bad title' INPUT_WARN_CHECKS='TITLE' INPUT_CHECK_TITLE=true \
+        INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false \
+        INPUT_CHECK_BRANCH_NAME=false INPUT_CHECK_PR_SIZE=false INPUT_CHECK_LABEL=false INPUT_CHECK_TARGET_BRANCH=false \
+        bash "$CHECK" >/dev/null 2>&1 \
+        && grep -qF '| PR Title (Conventional Commits) | 🟡 Warning |' "$summary_file" \
+        && grep -A1 '^warn-count<<' "$output_file" | grep -qx '1'; then
+        echo "  ✅ warning renders in summary and increments warn-count"
+        ((TESTS_PASSED++))
+    else
+        echo "  ❌ warning renders in summary and increments warn-count"
+        ((TESTS_FAILED++))
+    fi
+    rm -f "$summary_file" "$output_file"
+}
+
+run_warn_summary_case
+
+run_orchestrator fail "unknown warn-check id is configuration error" \
+    "INPUT_PR_TITLE=feat: valid #1" "INPUT_WARN_CHECKS=unknown-check" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
 print_results "check_orchestrator" || exit 1

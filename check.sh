@@ -37,9 +37,32 @@ declare -a CHECK_RESULTS=()
 declare -a CHECK_MESSAGES=()
 FAIL_COUNT=0
 PASS_COUNT=0
+WARN_COUNT=0
+WARN_CHECKS="${INPUT_WARN_CHECKS:-}"
+
+csv_contains_ignore_case() {
+    local needle="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" item
+    while IFS= read -r item; do
+        item="$(printf '%s' "$item" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+        [[ "$item" == "$needle" ]] && return 0
+    done < <(printf '%s\n' "$2" | tr ',' '\n')
+    return 1
+}
+
+record_result() {
+    local name="$1" result="$2" message="$3"
+    CHECK_NAMES+=("$name")
+    CHECK_RESULTS+=("$result")
+    CHECK_MESSAGES+=("$message")
+    case "$result" in
+        pass) ((PASS_COUNT++)) ;;
+        warn) ((WARN_COUNT++)) ;;
+        *) ((FAIL_COUNT++)) ;;
+    esac
+}
 
 run_check() {
-    local name="$1"
+    local name="$1" check_id="$3"
     local script="${CHECKS_DIR}/$2"
 
     if [[ ! -f "$script" ]]; then
@@ -54,29 +77,37 @@ run_check() {
     output=$(bash "$script" 2>&1)
     exit_code=$?
 
-    CHECK_NAMES+=("$name")
-
     if [[ "$exit_code" -eq 0 ]]; then
-        CHECK_RESULTS+=("pass")
-        CHECK_MESSAGES+=("$output")
-        ((PASS_COUNT++))
+        record_result "$name" "pass" "$output"
+    elif csv_contains_ignore_case "$check_id" "$WARN_CHECKS"; then
+        record_result "$name" "warn" "$output"
     else
-        CHECK_RESULTS+=("fail")
-        CHECK_MESSAGES+=("$output")
-        ((FAIL_COUNT++))
+        record_result "$name" "fail" "$output"
     fi
 }
+
+known_check_ids=""
+for entry in "${REGISTRY[@]}"; do
+    IFS='|' read -r env_var _ _ _ <<< "$entry"
+    known_check_ids+="${env_var#INPUT_CHECK_},"
+done
+for warn_check in $(printf '%s' "$WARN_CHECKS" | tr ',' ' '); do
+    if ! csv_contains_ignore_case "$warn_check" "$known_check_ids"; then
+        record_result "Warn Checks" "error" "config error: unknown check '${warn_check}' in input 'warn-checks'"
+    fi
+done
 
 for entry in "${REGISTRY[@]}"; do
     IFS='|' read -r env_var default display_name script_name <<< "$entry"
     enabled="${!env_var:-$default}"
     if [[ "$enabled" == "true" ]]; then
-        run_check "$display_name" "$script_name"
+        check_id="$(printf '%s' "${env_var#INPUT_CHECK_}" | tr '[:upper:]' '[:lower:]' | tr '_' '-')"
+        run_check "$display_name" "$script_name" "$check_id"
     fi
 done
 
 # ── Summary ──────────────────────────────────────────────────────────────────
-TOTAL=$((PASS_COUNT + FAIL_COUNT))
+TOTAL=$((PASS_COUNT + FAIL_COUNT + WARN_COUNT))
 
 {
     echo "## PR Requirements Check"
@@ -88,6 +119,11 @@ TOTAL=$((PASS_COUNT + FAIL_COUNT))
         if [[ "${CHECK_RESULTS[$i]}" == "pass" ]]; then
             echo "| ${CHECK_NAMES[$i]} | ✅ Pass | - |"
         else
+            case "${CHECK_RESULTS[$i]}" in
+                warn) status="🟡 Warning" ;;
+                error) status="⚠️ Error" ;;
+                *) status="❌ Fail" ;;
+            esac
             # Render PR-controlled text as an inert code span: strip backticks,
             # flatten newlines, escape table pipes
             detail="${CHECK_MESSAGES[$i]#fail: }"
@@ -97,7 +133,7 @@ TOTAL=$((PASS_COUNT + FAIL_COUNT))
             else
                 detail="\`${detail}\`"
             fi
-            echo "| ${CHECK_NAMES[$i]} | ❌ Fail | ${detail} |"
+            echo "| ${CHECK_NAMES[$i]} | ${status} | ${detail} |"
         fi
     done
 
@@ -113,6 +149,7 @@ fi
 set_output "result" "$RESULT"
 set_output "pass-count" "$PASS_COUNT"
 set_output "fail-count" "$FAIL_COUNT"
+set_output "warn-count" "$WARN_COUNT"
 set_output "total-count" "$TOTAL"
 
 # CLI output
@@ -122,7 +159,11 @@ for i in "${!CHECK_NAMES[@]}"; do
     if [[ "${CHECK_RESULTS[$i]}" == "pass" ]]; then
         echo "  ✅ ${CHECK_NAMES[$i]}"
     else
-        echo "  ❌ ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}"
+        case "${CHECK_RESULTS[$i]}" in
+            warn) echo "  🟡 ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
+            error) echo "  ⚠️ ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
+            *) echo "  ❌ ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
+        esac
     fi
 done
 

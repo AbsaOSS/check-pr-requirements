@@ -83,6 +83,7 @@ Only check what you need:
 | `max-files-changed` | `50` | Maximum files changed |
 | `required-labels` | *(empty = any label)* | Required label names |
 | `allowed-target-branches` | `main,master` | Allowed target branches |
+| `warn-checks` | *(empty = all blocking)* | Comma-separated check ids whose failed results are warnings, e.g. `pr-size,label` |
 | `release-notes-tag` | `## [Rr]elease [Nn]otes` | Release notes section header pattern |
 | `release-notes-skip-labels` | `no RN` | Labels that skip release notes check |
 | `release-notes-skip-placeholders` | `TBD` | Placeholders indicating missing notes |
@@ -94,6 +95,7 @@ Only check what you need:
 | `result` | `pass` or `fail` |
 | `pass-count` | Number of checks passed |
 | `fail-count` | Number of checks failed |
+| `warn-count` | Number of checks reported as warnings |
 | `total-count` | Total checks executed |
 
 ## Adding a New Check
