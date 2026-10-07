@@ -49,7 +49,7 @@ inputs:
     required: false
     default: ${{ github.event.pull_request.user.login }}
   github-token:
-    description: "GitHub token for API access (used by the release notes check)"
+    description: "GitHub token for API access (used by the release notes check and comment-on-failure)"
     required: false
     default: ${{ github.token }}
 
@@ -164,6 +164,14 @@ inputs:
     description: "Comma-separated check ids whose failures are reported as warnings and do not fail the job: title, description, issue-reference, branch-name, pr-size, label, target-branch, release-notes"
     required: false
     default: ""
+  annotations:
+    description: "Emit an error/warning annotation per failed check, shown in the PR checks UI"
+    required: false
+    default: "true"
+  comment-on-failure:
+    description: "Keep one PR comment with the summary while checks fail and delete it once they pass (needs pull-requests: write)"
+    required: false
+    default: "false"
   skip-actors:
     description: "Comma-separated PR-author logins that bypass all checks (e.g. bots). Empty = no bypass."
     required: false
@@ -201,6 +209,12 @@ outputs:
   total-count:
     description: "Total number of checks run"
     value: ${{ steps.checks.outputs.total-count }}
+  failed-checks:
+    description: "Comma-separated ids of checks that failed (e.g. title,pr-size)"
+    value: ${{ steps.checks.outputs.failed-checks }}
+  summary:
+    description: "Markdown summary of the check results"
+    value: ${{ steps.checks.outputs.summary }}
   skipped:
     description: "true when all checks were bypassed by skip-actors or skip-labels"
     value: ${{ steps.checks.outputs.skipped }}
@@ -238,6 +252,7 @@ runs:
         INPUT_SKIP_ACTORS: ${{ inputs.skip-actors }}
         INPUT_SKIP_LABELS: ${{ inputs.skip-labels }}
         INPUT_WARN_CHECKS: ${{ inputs.warn-checks }}
+        INPUT_ANNOTATIONS: ${{ inputs.annotations }}
         INPUT_TARGET_BRANCH: ${{ inputs.target-branch }}
         INPUT_FILES_CHANGED: ${{ inputs.files-changed }}
         INPUT_ADDITIONS: ${{ inputs.additions }}
@@ -272,7 +287,18 @@ runs:
         INPUT_RELEASE_NOTES_TAG: ${{ inputs.release-notes-tag }}
         INPUT_RELEASE_NOTES_SKIP_LABELS: ${{ inputs.release-notes-skip-labels }}
         INPUT_RELEASE_NOTES_OUTCOME: ${{ steps.release-notes.outcome }}
-      run: bash "${{ github.action_path }}/check.sh"
+      run: bash "$GITHUB_ACTION_PATH/check.sh"
+
+    - name: Update PR comment
+      if: inputs.comment-on-failure == 'true' && steps.checks.outputs.skipped != 'true'
+      continue-on-error: true
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        INPUT_PR_NUMBER: ${{ inputs.pr-number }}
+        INPUT_RESULT: ${{ steps.checks.outputs.result }}
+        INPUT_SUMMARY: ${{ steps.checks.outputs.summary }}
+      run: bash "$GITHUB_ACTION_PATH/comment.sh"
 
     - name: Evaluate results
       id: evaluate

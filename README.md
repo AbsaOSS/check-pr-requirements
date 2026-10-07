@@ -71,7 +71,7 @@ PR data is read from the `pull_request` event by default, so these inputs are on
 | `additions` | `github.event.pull_request.additions` | Lines added (used with `max-lines-changed`) |
 | `deletions` | `github.event.pull_request.deletions` | Lines deleted (used with `max-lines-changed`) |
 | `labels` | PR label names joined with `,` | Comma-separated list of PR labels |
-| `github-token` | `github.token` | GitHub token (used by the release notes check) |
+| `github-token` | `github.token` | GitHub token (used by the release notes check and `comment-on-failure`) |
 
 A check whose PR data is empty fails with a message naming the missing input.
 
@@ -98,6 +98,8 @@ A check whose PR data is empty fails with a message naming the missing input.
 | `required-labels` | *(empty = any label)* | Required label names, matched ignoring case, e.g. `bug,enhancement` |
 | `allowed-target-branches` | `main,master` | Allowed target branches; glob patterns supported (`main,support/*`) |
 | `warn-checks` | *(empty = all blocking)* | Check ids whose failures are warnings that do not fail the job, e.g. `pr-size,label`. Ids: `title`, `description`, `issue-reference`, `branch-name`, `pr-size`, `label`, `target-branch`, `release-notes` |
+| `annotations` | `true` | Emit an error (or warning) annotation per failed check, shown on the PR's Checks tab |
+| `comment-on-failure` | `false` | Keep one PR comment with the summary and "How to fix" while checks fail; delete it once they pass. Requires `pull-requests: write` and the `gh` CLI (preinstalled on GitHub-hosted runners); on fork PRs the `pull_request` token is read-only, so the comment is skipped |
 | `skip-actors` | *(empty = no bypass)* | Comma-separated PR-author logins (ignoring case) that bypass **all** checks (needs `pr-author` wired), e.g. `dependabot[bot]` |
 | `skip-labels` | *(empty = no bypass)* | Comma-separated PR labels (ignoring case) that bypass **all** checks (needs `labels` wired), e.g. `skip-checks,automated` |
 | `release-notes-tag` | `## [Rr]elease [Nn]otes` | Release notes section header pattern |
@@ -115,6 +117,8 @@ Boolean inputs accept `true`/`false` in any letter case. Invalid configuration (
 | `fail-count` | Number of checks failed |
 | `warn-count` | Number of `warn-checks` failures reported as warnings |
 | `total-count` | Total checks executed |
+| `failed-checks` | Comma-separated ids of failed checks, e.g. `title,pr-size` |
+| `summary` | Markdown summary (the same text as the job summary) |
 | `skipped` | `true` when all checks were bypassed by `skip-actors` or `skip-labels` |
 | `skip-reason` | Why the checks were bypassed, e.g. `author dependabot[bot] matched skip-actors` |
 
