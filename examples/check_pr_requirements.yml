@@ -6,7 +6,8 @@ on:
     branches: [main, master]
 
 # Least privilege: contents for checkout-free composite, pull-requests for
-# the release notes presence check (reads PR data via the API)
+# the release notes presence check (reads PR data via the API). Use
+# pull-requests: write if comment-on-failure is enabled.
 permissions:
   contents: read
   pull-requests: read
@@ -17,17 +18,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check PR requirements
-        uses: AbsaOSS/check-pr-requirements@v0.1.0
+        uses: AbsaOSS/check-pr-requirements@v0
         with:
-          pr-title: ${{ github.event.pull_request.title }}
-          pr-body: ${{ github.event.pull_request.body }}
-          pr-branch: ${{ github.event.pull_request.head.ref }}
-          pr-author: ${{ github.event.pull_request.user.login }}
-          pr-number: ${{ github.event.pull_request.number }}
-          target-branch: ${{ github.event.pull_request.base.ref }}
-          files-changed: ${{ github.event.pull_request.changed_files }}
-          labels: ${{ join(github.event.pull_request.labels.*.name, ',') }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # PR data (title, body, branch, author, labels, size) and github-token
+          # default to the pull_request event; pass them only to override.
 
           # Enable/disable checks
           check-title: "true"
@@ -51,3 +45,9 @@ jobs:
           skip-labels: "skip-checks"
           release-notes-tag: "## [Rr]elease [Nn]otes"
           release-notes-skip-labels: "no RN"
+          # Report these checks as non-blocking warnings instead of failures
+          warn-checks: "pr-size"
+          # Also cap changed lines (additions + deletions); empty = no limit
+          max-lines-changed: ""
+          # Post the summary as a PR comment while checks fail (needs pull-requests: write)
+          comment-on-failure: "false"
