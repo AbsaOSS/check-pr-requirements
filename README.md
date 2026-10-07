@@ -96,6 +96,7 @@ Only check what you need:
 | `allowed-target-branches` | `main,master` | Allowed target branches; glob patterns supported (`main,support/*`) |
 | `skip-actors` | *(empty = no bypass)* | Comma-separated PR-author logins that bypass **all** checks (needs `pr-author` wired), e.g. `dependabot[bot]` |
 | `skip-labels` | *(empty = no bypass)* | Comma-separated PR labels that bypass **all** checks (needs `labels` wired), e.g. `skip-checks,automated` |
+| `warn-checks` | *(empty = all blocking)* | Comma-separated check ids whose failed results are warnings, e.g. `pr-size,label` |
 | `release-notes-tag` | `## [Rr]elease [Nn]otes` | Release notes section header pattern |
 | `release-notes-skip-labels` | `no RN` | Labels that skip release notes check |
 | `release-notes-skip-placeholders` | `TBD` | Placeholders indicating missing notes |
@@ -107,6 +108,7 @@ Only check what you need:
 | `result` | `pass` or `fail` |
 | `pass-count` | Number of checks passed |
 | `fail-count` | Number of checks failed |
+| `warn-count` | Number of checks reported as warnings |
 | `total-count` | Total checks executed |
 
 ## Adding a New Check
