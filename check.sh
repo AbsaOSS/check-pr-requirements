@@ -206,7 +206,8 @@ run_check() {
 known_check_ids=""
 for entry in "${REGISTRY[@]}"; do
     IFS='|' read -r env_var _ _ _ <<< "$entry"
-    known_check_ids+="${env_var#INPUT_CHECK_},"
+    known_id="$(printf '%s' "${env_var#INPUT_CHECK_}" | tr '[:upper:]' '[:lower:]' | tr '_' '-')"
+    known_check_ids+="${known_id},"
 done
 for warn_check in $(printf '%s' "$WARN_CHECKS" | tr ',' ' '); do
     if ! csv_contains_ignore_case "$warn_check" "$known_check_ids"; then
@@ -291,7 +292,13 @@ for i in "${!CHECK_NAMES[@]}"; do
         echo "  ✅ ${CHECK_NAMES[$i]}"
     else
         case "${CHECK_RESULTS[$i]}" in
-            warn) echo "  🟡 ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
+            warn)
+                echo "  🟡 ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}"
+                warn_msg="${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]#fail: }"
+                warn_msg="${warn_msg//'%'/%25}"
+                warn_msg="${warn_msg//$'\r'/%0D}"
+                warn_msg="${warn_msg//$'\n'/%0A}"
+                echo "::warning::${warn_msg}" ;;
             error) echo "  ⚠️ ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
             *) echo "  ❌ ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
         esac

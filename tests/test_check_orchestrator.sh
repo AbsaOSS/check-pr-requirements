@@ -285,7 +285,7 @@ run_warn_summary_case() {
         INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false \
         INPUT_CHECK_BRANCH_NAME=false INPUT_CHECK_PR_SIZE=false INPUT_CHECK_LABEL=false INPUT_CHECK_TARGET_BRANCH=false \
         bash "$CHECK" >/dev/null 2>&1 \
-        && grep -qF '| PR Title (Conventional Commits) | 🟡 Warning |' "$summary_file" \
+        && grep -qF '| PR Title | 🟡 Warning |' "$summary_file" \
         && grep -A1 '^warn-count<<' "$output_file" | grep -qx '1'; then
         echo "  ✅ warning renders in summary and increments warn-count"
         ((TESTS_PASSED++))
@@ -297,6 +297,30 @@ run_warn_summary_case() {
 }
 
 run_warn_summary_case
+
+run_orchestrator pass "hyphenated warn-check id (pr-size) is accepted" \
+    "INPUT_PR_TITLE=feat: valid #1" "INPUT_WARN_CHECKS=pr-size,label" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
+run_warn_annotation_case() {
+    local out
+    ((TESTS_TOTAL++))
+    out=$(env -i PATH="$PATH" HOME="$HOME" GITHUB_STEP_SUMMARY=/dev/null GITHUB_OUTPUT=/dev/null \
+        INPUT_PR_TITLE='bad title' INPUT_WARN_CHECKS='title' INPUT_CHECK_TITLE=true \
+        INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false \
+        INPUT_CHECK_BRANCH_NAME=false INPUT_CHECK_PR_SIZE=false INPUT_CHECK_LABEL=false INPUT_CHECK_TARGET_BRANCH=false \
+        bash "$CHECK" 2>&1)
+    if grep -q '^::warning::PR Title: ' <<< "$out"; then
+        echo "  ✅ warning emits ::warning:: annotation"
+        ((TESTS_PASSED++))
+    else
+        echo "  ❌ warning emits ::warning:: annotation"
+        ((TESTS_FAILED++))
+    fi
+}
+
+run_warn_annotation_case
 
 run_orchestrator fail "unknown warn-check id is configuration error" \
     "INPUT_PR_TITLE=feat: valid #1" "INPUT_WARN_CHECKS=unknown-check" \
