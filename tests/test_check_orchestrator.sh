@@ -212,7 +212,7 @@ run_summary_case() {
         "$@" \
         bash "$CHECK" >/dev/null 2>&1
 
-    if "$check_fn" "$summary_file"; then
+    if "$check_fn" "$summary_file" "$output_file"; then
         echo "  ✅ ${description}"
         ((TESTS_PASSED++))
     else
@@ -352,4 +352,31 @@ run_orchestrator "contains:⚠️ PR Title" "config error in warned check report
     "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
     "${DEFAULTS[@]}"
 
-print_results "check_orchestrator" || exit 1
+# Value of a heredoc-delimited GITHUB_OUTPUT entry: output_value <file> <name>
+output_value() { grep -A1 "^$2<<" "$1" | tail -n 1; }
+
+unknown_id_not_counted() {
+    [[ "$(output_value "$2" total-count)" == "1" ]] \
+        && [[ "$(output_value "$2" fail-count)" == "0" ]] \
+        && [[ "$(output_value "$2" result)" == "fail" ]] \
+        && grep -qF '**Result:** 1/1 checks passed, 1 configuration error(s)' "$1" \
+        && grep -qF '**Warn Checks**' "$1"
+}
+run_summary_case "unknown warn-check id fails without inflating counts" unknown_id_not_counted \
+    INPUT_PR_TITLE='feat: valid #1' INPUT_WARN_CHECKS='unknown-check' \
+    INPUT_CHECK_TITLE=true INPUT_CHECK_DESCRIPTION=false \
+    INPUT_CHECK_ISSUE_REFERENCE=false INPUT_CHECK_BRANCH_NAME=false \
+    INPUT_CHECK_PR_SIZE=false INPUT_CHECK_LABEL=false INPUT_CHECK_TARGET_BRANCH=false
+
+result_mentions_warnings() {
+    grep -qF '**Result:** 1/2 checks passed, 1 with warnings' "$1" \
+        && [[ "$(output_value "$2" result)" == "pass" ]]
+}
+run_summary_case "result line mentions warnings" result_mentions_warnings \
+    INPUT_PR_TITLE='bad title' INPUT_PR_BODY='Fixes #1 with a long enough description' \
+    INPUT_WARN_CHECKS='title' \
+    INPUT_CHECK_TITLE=true INPUT_CHECK_DESCRIPTION=true \
+    INPUT_CHECK_ISSUE_REFERENCE=false INPUT_CHECK_BRANCH_NAME=false \
+    INPUT_CHECK_PR_SIZE=false INPUT_CHECK_LABEL=false INPUT_CHECK_TARGET_BRANCH=false
+
+print_results "check_orchestrator"|| exit 1

@@ -107,7 +107,7 @@ Only check what you need:
 |--------|-------------|
 | `result` | `pass` or `fail` |
 | `pass-count` | Number of checks passed |
-| `fail-count` | Number of checks failed |
+| `fail-count` | Number of checks failed (excludes action configuration errors such as unknown `warn-checks` ids, which still set `result` to `fail`) |
 | `warn-count` | Number of checks reported as warnings |
 | `total-count` | Total checks executed |
 
