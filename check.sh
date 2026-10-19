@@ -35,6 +35,7 @@ emit_skip() {
     set_output "result" "pass"
     set_output "pass-count" "0"
     set_output "fail-count" "0"
+    set_output "warn-count" "0"
     set_output "total-count" "0"
     echo ""
     echo "PR Requirements: skipped (${reason})"
@@ -155,17 +156,33 @@ declare -a CHECK_MESSAGES=()
 FAIL_COUNT=0
 PASS_COUNT=0
 WARN_COUNT=0
-WARN_CHECKS="${INPUT_WARN_CHECKS:-}"
 
-csv_contains_ignore_case() {
-    local needle item
-    needle="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
-    while IFS= read -r item; do
-        item="$(printf '%s' "$item" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+
+# Check id derived from the registry toggle, e.g. INPUT_CHECK_PR_SIZE -> pr-size
+check_id_for() { lower "${1#INPUT_CHECK_}" | tr '_' '-'; }
+
+# Return 0 when $1 equals any of the remaining arguments.
+contains() {
+    local needle="$1" item
+    shift
+    for item in "$@"; do
         [[ "$item" == "$needle" ]] && return 0
-    done < <(printf '%s\n' "$2" | tr ',' '\n')
+    done
     return 1
 }
+
+declare -a KNOWN_IDS=()
+for entry in "${REGISTRY[@]}"; do
+    IFS='|' read -r env_var _ _ _ <<< "$entry"
+    KNOWN_IDS+=("$(check_id_for "$env_var")")
+done
+
+declare -a WARN_IDS=()
+split_csv "${INPUT_WARN_CHECKS:-}"
+for warn_check in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
+    WARN_IDS+=("$(lower "$warn_check")")
+done
 
 record_result() {
     local name="$1" result="$2" message="$3"
@@ -184,10 +201,7 @@ run_check() {
     local script="${CHECKS_DIR}/$2"
 
     if [[ ! -f "$script" ]]; then
-        CHECK_NAMES+=("$name")
-        CHECK_RESULTS+=("error")
-        CHECK_MESSAGES+=("check script not found: $script")
-        ((FAIL_COUNT++))
+        record_result "$name" "error" "check script not found: $script"
         return
     fi
 
@@ -197,31 +211,24 @@ run_check() {
 
     if [[ "$exit_code" -eq 0 ]]; then
         record_result "$name" "pass" "$output"
-    elif csv_contains_ignore_case "$check_id" "$WARN_CHECKS"; then
+    elif contains "$check_id" ${WARN_IDS[@]+"${WARN_IDS[@]}"}; then
         record_result "$name" "warn" "$output"
     else
         record_result "$name" "fail" "$output"
     fi
 }
 
-known_check_ids=""
-for entry in "${REGISTRY[@]}"; do
-    IFS='|' read -r env_var _ _ _ <<< "$entry"
-    known_id="$(printf '%s' "${env_var#INPUT_CHECK_}" | tr '[:upper:]' '[:lower:]' | tr '_' '-')"
-    known_check_ids+="${known_id},"
-done
-for warn_check in $(printf '%s' "$WARN_CHECKS" | tr ',' ' '); do
-    if ! csv_contains_ignore_case "$warn_check" "$known_check_ids"; then
+for warn_check in ${WARN_IDS[@]+"${WARN_IDS[@]}"}; do
+    if ! contains "$warn_check" "${KNOWN_IDS[@]}"; then
         record_result "Warn Checks" "error" "config error: unknown check '${warn_check}' in input 'warn-checks'"
     fi
 done
 
-for entry in "${REGISTRY[@]}"; do
-    IFS='|' read -r env_var default display_name script_name <<< "$entry"
+for idx in "${!REGISTRY[@]}"; do
+    IFS='|' read -r env_var default display_name script_name <<< "${REGISTRY[$idx]}"
     enabled="${!env_var:-$default}"
     if [[ "$enabled" == "true" ]]; then
-        check_id="$(printf '%s' "${env_var#INPUT_CHECK_}" | tr '[:upper:]' '[:lower:]' | tr '_' '-')"
-        run_check "$display_name" "$script_name" "$check_id"
+        run_check "$display_name" "$script_name" "${KNOWN_IDS[$idx]}"
     fi
 done
 
@@ -267,7 +274,7 @@ TOTAL=$((PASS_COUNT + FAIL_COUNT + WARN_COUNT))
         echo "The checks above must pass before this PR can merge."
         echo ""
         for i in "${!CHECK_NAMES[@]}"; do
-            if [[ "${CHECK_RESULTS[$i]}" != "pass" ]]; then
+            if [[ "${CHECK_RESULTS[$i]}" != "pass" && "${CHECK_RESULTS[$i]}" != "warn" ]]; then
                 remediation_for "${CHECK_NAMES[$i]}"
             fi
         done

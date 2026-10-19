@@ -322,6 +322,19 @@ run_warn_annotation_case() {
 
 run_warn_annotation_case
 
+no_title_tip() { has_how_to_fix "$1" && ! grep -qF '**PR Title**' "$1"; }
+run_summary_case "warned check is excluded from How to fix" no_title_tip \
+    INPUT_PR_TITLE='bad title' INPUT_WARN_CHECKS='title' \
+    INPUT_TARGET_BRANCH='feature/x' INPUT_ALLOWED_TARGET_BRANCHES='develop' \
+    INPUT_CHECK_TITLE=true INPUT_CHECK_DESCRIPTION=false \
+    INPUT_CHECK_ISSUE_REFERENCE=false INPUT_CHECK_BRANCH_NAME=false \
+    INPUT_CHECK_PR_SIZE=false INPUT_CHECK_LABEL=false INPUT_CHECK_TARGET_BRANCH=true
+
+run_orchestrator fail "glob-like warn-checks entry is rejected" \
+    "INPUT_PR_TITLE=feat: valid #1" "INPUT_WARN_CHECKS=*" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
 run_orchestrator fail "unknown warn-check id is configuration error" \
     "INPUT_PR_TITLE=feat: valid #1" "INPUT_WARN_CHECKS=unknown-check" \
     "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
