@@ -10,13 +10,13 @@ FILES="${INPUT_FILES_CHANGED:?Files changed count is required}"
 MAX="${INPUT_MAX_FILES_CHANGED:-50}"
 
 if ! [[ "$FILES" =~ ^[0-9]+$ ]]; then
-    echo "fail: invalid files changed count '$FILES'"
-    exit 1
+    echo "error: invalid files changed count '$FILES'"
+    exit 2
 fi
 
 if ! [[ "$MAX" =~ ^[0-9]+$ ]]; then
-    echo "fail: invalid max files changed '$MAX'"
-    exit 1
+    echo "error: invalid max files changed '$MAX'"
+    exit 2
 fi
 
 if [[ "$FILES" -gt "$MAX" ]]; then

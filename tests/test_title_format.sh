@@ -101,10 +101,17 @@ INPUT_PR_TITLE="fix the thing" \
 
 INPUT_TITLE_FORMATS="custom" INPUT_TITLE_PATTERN="" \
 INPUT_PR_TITLE="anything" \
-    assert_fail "custom format without title-pattern" "$CHECK"
+    assert_config_error "custom format without title-pattern" "$CHECK"
+
+INPUT_TITLE_FORMATS="conventional,custom" INPUT_TITLE_PATTERN="" \
+INPUT_PR_TITLE="feat: add login" \
+    assert_config_error "missing title-pattern not masked by earlier matching format" "$CHECK"
 
 INPUT_TITLE_FORMATS="bogus" INPUT_PR_TITLE="feat: add login" \
-    assert_fail "unknown format name" "$CHECK"
+    assert_config_error "unknown format name" "$CHECK"
+
+INPUT_TITLE_FORMATS="conventional,bogus" INPUT_PR_TITLE="feat: add login" \
+    assert_config_error "unknown format not masked by earlier matching format" "$CHECK"
 
 INPUT_TITLE_FORMATS="" INPUT_PR_TITLE="feat: add login" \
     assert_pass "empty formats falls back to conventional default" "$CHECK"

@@ -55,6 +55,25 @@ assert_fail() {
     fi
 }
 
+assert_config_error() {
+    local description="$1"
+    local script="$2"
+    shift 2
+
+    ((TESTS_TOTAL++))
+    local output
+    output=$(_run_script "$script")
+    local rc=$?
+
+    if [[ "$rc" -eq 2 ]]; then
+        echo "  ✅ ${description}"
+        ((TESTS_PASSED++))
+    else
+        echo "  ❌ ${description} (expected config error exit 2, got exit ${rc}: ${output})"
+        ((TESTS_FAILED++))
+    fi
+}
+
 assert_output_contains() {
     local description="$1"
     local script="$2"

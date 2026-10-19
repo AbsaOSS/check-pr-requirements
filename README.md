@@ -113,7 +113,7 @@ Only check what you need:
 
 ## Adding a New Check
 
-1. Create `checks/my_check.sh` — reads `INPUT_*` env vars, prints `pass` or `fail: reason`, exits 0 or 1
+1. Create `checks/my_check.sh` — reads `INPUT_*` env vars, prints `pass`, `fail: reason` (exit 1) or `error: reason` for invalid configuration (exit 2; reported as an error even when listed in `warn-checks`); exits 0 on pass
 2. Add entry to `REGISTRY` array in `check.sh`
 3. Add inputs to `action.yml` (toggle + config)
 4. Add env mapping in `action.yml` composite step

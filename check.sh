@@ -209,8 +209,11 @@ run_check() {
     output=$(bash "$script" 2>&1)
     exit_code=$?
 
+    # Exit 2 is a configuration error: never downgraded to a warning
     if [[ "$exit_code" -eq 0 ]]; then
         record_result "$name" "pass" "$output"
+    elif [[ "$exit_code" -eq 2 ]]; then
+        record_result "$name" "error" "$output"
     elif contains "$check_id" ${WARN_IDS[@]+"${WARN_IDS[@]}"}; then
         record_result "$name" "warn" "$output"
     else
@@ -253,6 +256,7 @@ TOTAL=$((PASS_COUNT + FAIL_COUNT + WARN_COUNT))
             # Render PR-controlled text as an inert code span: strip backticks,
             # flatten newlines, escape table pipes
             detail="${CHECK_MESSAGES[$i]#fail: }"
+            detail="${detail#error: }"
             detail=$(printf '%s' "$detail" | tr '\n' ' ' | tr -d '`' | sed 's/|/\\|/g')
             if [[ -z "$detail" ]]; then
                 detail="-"

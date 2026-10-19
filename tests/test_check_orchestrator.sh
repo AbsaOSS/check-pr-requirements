@@ -340,4 +340,16 @@ run_orchestrator fail "unknown warn-check id is configuration error" \
     "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
     "${DEFAULTS[@]}"
 
+run_orchestrator fail "config error in warned check still fails" \
+    "INPUT_PR_TITLE=feat: valid #1" "INPUT_WARN_CHECKS=title" \
+    "INPUT_TITLE_FORMATS=custom" "INPUT_TITLE_PATTERN=" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
+run_orchestrator "contains:⚠️ PR Title" "config error in warned check reported as error" \
+    "INPUT_PR_TITLE=feat: valid #1" "INPUT_WARN_CHECKS=title" \
+    "INPUT_TITLE_FORMATS=custom" "INPUT_TITLE_PATTERN=" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
 print_results "check_orchestrator" || exit 1

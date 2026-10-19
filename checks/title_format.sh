@@ -76,9 +76,27 @@ split_csv "$FORMATS"
 FORMAT_LIST=(${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"})
 
 if [[ ${#FORMAT_LIST[@]} -eq 0 ]]; then
-    echo "fail: no title formats configured"
-    exit 1
+    echo "error: no title formats configured"
+    exit 2
 fi
+
+# Validate the whole config up front so a format that matches early cannot
+# mask a misconfigured one later in the list.
+for format in "${FORMAT_LIST[@]}"; do
+    case "$format" in
+        conventional|issue-number) ;;
+        custom)
+            if [[ -z "$CUSTOM_PATTERN" ]]; then
+                echo "error: title format 'custom' requires title-pattern to be set"
+                exit 2
+            fi
+            ;;
+        *)
+            echo "error: unknown title format '$format' (allowed: conventional, issue-number, custom)"
+            exit 2
+            ;;
+    esac
+done
 
 for format in "${FORMAT_LIST[@]}"; do
     case "$format" in
@@ -95,18 +113,10 @@ for format in "${FORMAT_LIST[@]}"; do
             fi
             ;;
         custom)
-            if [[ -z "$CUSTOM_PATTERN" ]]; then
-                echo "fail: title format 'custom' requires title-pattern to be set"
-                exit 1
-            fi
             if matches_custom; then
                 echo "pass"
                 exit 0
             fi
-            ;;
-        *)
-            echo "fail: unknown title format '$format' (allowed: conventional, issue-number, custom)"
-            exit 1
             ;;
     esac
 done
