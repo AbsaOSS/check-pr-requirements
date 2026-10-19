@@ -158,7 +158,8 @@ WARN_COUNT=0
 WARN_CHECKS="${INPUT_WARN_CHECKS:-}"
 
 csv_contains_ignore_case() {
-    local needle="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" item
+    local needle item
+    needle="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
     while IFS= read -r item; do
         item="$(printf '%s' "$item" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
         [[ "$item" == "$needle" ]] && return 0
