@@ -96,6 +96,7 @@ Only check what you need:
 | `allowed-target-branches` | `main,master` | Allowed target branches; glob patterns supported (`main,support/*`) |
 | `skip-actors` | *(empty = no bypass)* | Comma-separated PR-author logins that bypass **all** checks (needs `pr-author` wired), e.g. `dependabot[bot]` |
 | `skip-labels` | *(empty = no bypass)* | Comma-separated PR labels that bypass **all** checks (needs `labels` wired), e.g. `skip-checks,automated` |
+| `warn-checks` | *(empty = all blocking)* | Comma-separated check ids whose failed results are warnings, e.g. `pr-size,label` |
 | `release-notes-tag` | `## [Rr]elease [Nn]otes` | Release notes section header pattern |
 | `release-notes-skip-labels` | `no RN` | Labels that skip release notes check |
 | `release-notes-skip-placeholders` | `TBD` | Placeholders indicating missing notes |
@@ -106,12 +107,13 @@ Only check what you need:
 |--------|-------------|
 | `result` | `pass` or `fail` |
 | `pass-count` | Number of checks passed |
-| `fail-count` | Number of checks failed |
+| `fail-count` | Number of checks failed (excludes action configuration errors such as unknown `warn-checks` ids, which still set `result` to `fail`) |
+| `warn-count` | Number of checks reported as warnings |
 | `total-count` | Total checks executed |
 
 ## Adding a New Check
 
-1. Create `checks/my_check.sh` — reads `INPUT_*` env vars, prints `pass` or `fail: reason`, exits 0 or 1
+1. Create `checks/my_check.sh` — reads `INPUT_*` env vars, prints `pass`, `fail: reason` (exit 1) or `error: reason` for invalid configuration (exit 2; reported as an error even when listed in `warn-checks`); exits 0 on pass
 2. Add entry to `REGISTRY` array in `check.sh`
 3. Add inputs to `action.yml` (toggle + config)
 4. Add env mapping in `action.yml` composite step

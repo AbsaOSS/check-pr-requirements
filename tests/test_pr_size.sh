@@ -35,4 +35,9 @@ INPUT_MAX_FILES_CHANGED="" \
 INPUT_FILES_CHANGED="999" \
     assert_fail "way over limit" "$CHECK"
 
+# ── Config errors ────────────────────────────────────────────────────────────
+
+INPUT_FILES_CHANGED="5" INPUT_MAX_FILES_CHANGED="ten" \
+    assert_config_error "non-numeric max files changed" "$CHECK"
+
 print_results "pr_size" || exit 1

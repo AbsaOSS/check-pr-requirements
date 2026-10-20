@@ -212,7 +212,7 @@ run_summary_case() {
         "$@" \
         bash "$CHECK" >/dev/null 2>&1
 
-    if "$check_fn" "$summary_file"; then
+    if "$check_fn" "$summary_file" "$output_file"; then
         echo "  ✅ ${description}"
         ((TESTS_PASSED++))
     else
@@ -264,4 +264,119 @@ run_summary_case "passing run omits How to fix" no_how_to_fix \
     INPUT_CHECK_PR_SIZE=false INPUT_CHECK_LABEL=false INPUT_CHECK_TARGET_BRANCH=false \
     INPUT_TITLE_TYPES= INPUT_TITLE_SCOPES= INPUT_DESCRIPTION_MIN_LENGTH=
 
-print_results "check_orchestrator" || exit 1
+# ── Warn-only checks ─────────────────────────────────────────────────────────
+run_orchestrator pass "failing check listed in warn-checks does not fail" \
+    "INPUT_PR_TITLE=bad title" "INPUT_WARN_CHECKS=title" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
+run_orchestrator fail "check absent from warn-checks still fails" \
+    "INPUT_PR_TITLE=bad title" "INPUT_WARN_CHECKS=description" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
+run_warn_summary_case() {
+    local summary_file output_file
+    summary_file="$(mktemp)"
+    output_file="$(mktemp)"
+    ((TESTS_TOTAL++))
+    if env -i PATH="$PATH" HOME="$HOME" GITHUB_STEP_SUMMARY="$summary_file" GITHUB_OUTPUT="$output_file" \
+        INPUT_PR_TITLE='bad title' INPUT_WARN_CHECKS='TITLE' INPUT_CHECK_TITLE=true \
+        INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false \
+        INPUT_CHECK_BRANCH_NAME=false INPUT_CHECK_PR_SIZE=false INPUT_CHECK_LABEL=false INPUT_CHECK_TARGET_BRANCH=false \
+        bash "$CHECK" >/dev/null 2>&1 \
+        && grep -qF '| PR Title | 🟡 Warning |' "$summary_file" \
+        && grep -A1 '^warn-count<<' "$output_file" | grep -qx '1'; then
+        echo "  ✅ warning renders in summary and increments warn-count"
+        ((TESTS_PASSED++))
+    else
+        echo "  ❌ warning renders in summary and increments warn-count"
+        ((TESTS_FAILED++))
+    fi
+    rm -f "$summary_file" "$output_file"
+}
+
+run_warn_summary_case
+
+run_orchestrator pass "hyphenated warn-check id (pr-size) is accepted" \
+    "INPUT_PR_TITLE=feat: valid #1" "INPUT_WARN_CHECKS=pr-size,label" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
+run_warn_annotation_case() {
+    local out
+    ((TESTS_TOTAL++))
+    out=$(env -i PATH="$PATH" HOME="$HOME" GITHUB_STEP_SUMMARY=/dev/null GITHUB_OUTPUT=/dev/null \
+        INPUT_PR_TITLE='bad title' INPUT_WARN_CHECKS='title' INPUT_CHECK_TITLE=true \
+        INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false \
+        INPUT_CHECK_BRANCH_NAME=false INPUT_CHECK_PR_SIZE=false INPUT_CHECK_LABEL=false INPUT_CHECK_TARGET_BRANCH=false \
+        bash "$CHECK" 2>&1)
+    if grep -q '^::warning::PR Title: ' <<< "$out"; then
+        echo "  ✅ warning emits ::warning:: annotation"
+        ((TESTS_PASSED++))
+    else
+        echo "  ❌ warning emits ::warning:: annotation"
+        ((TESTS_FAILED++))
+    fi
+}
+
+run_warn_annotation_case
+
+no_title_tip() { has_how_to_fix "$1" && ! grep -qF '**PR Title**' "$1"; }
+run_summary_case "warned check is excluded from How to fix" no_title_tip \
+    INPUT_PR_TITLE='bad title' INPUT_WARN_CHECKS='title' \
+    INPUT_TARGET_BRANCH='feature/x' INPUT_ALLOWED_TARGET_BRANCHES='develop' \
+    INPUT_CHECK_TITLE=true INPUT_CHECK_DESCRIPTION=false \
+    INPUT_CHECK_ISSUE_REFERENCE=false INPUT_CHECK_BRANCH_NAME=false \
+    INPUT_CHECK_PR_SIZE=false INPUT_CHECK_LABEL=false INPUT_CHECK_TARGET_BRANCH=true
+
+run_orchestrator fail "glob-like warn-checks entry is rejected" \
+    "INPUT_PR_TITLE=feat: valid #1" "INPUT_WARN_CHECKS=*" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
+run_orchestrator fail "unknown warn-check id is configuration error" \
+    "INPUT_PR_TITLE=feat: valid #1" "INPUT_WARN_CHECKS=unknown-check" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
+run_orchestrator fail "config error in warned check still fails" \
+    "INPUT_PR_TITLE=feat: valid #1" "INPUT_WARN_CHECKS=title" \
+    "INPUT_TITLE_FORMATS=custom" "INPUT_TITLE_PATTERN=" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
+run_orchestrator "contains:⚠️ PR Title" "config error in warned check reported as error" \
+    "INPUT_PR_TITLE=feat: valid #1" "INPUT_WARN_CHECKS=title" \
+    "INPUT_TITLE_FORMATS=custom" "INPUT_TITLE_PATTERN=" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
+# Value of a heredoc-delimited GITHUB_OUTPUT entry: output_value <file> <name>
+output_value() { grep -A1 "^$2<<" "$1" | tail -n 1; }
+
+unknown_id_not_counted() {
+    [[ "$(output_value "$2" total-count)" == "1" ]] \
+        && [[ "$(output_value "$2" fail-count)" == "0" ]] \
+        && [[ "$(output_value "$2" result)" == "fail" ]] \
+        && grep -qF '**Result:** 1/1 checks passed, 1 configuration error(s)' "$1" \
+        && grep -qF '**Warn Checks**' "$1"
+}
+run_summary_case "unknown warn-check id fails without inflating counts" unknown_id_not_counted \
+    INPUT_PR_TITLE='feat: valid #1' INPUT_WARN_CHECKS='unknown-check' \
+    INPUT_CHECK_TITLE=true INPUT_CHECK_DESCRIPTION=false \
+    INPUT_CHECK_ISSUE_REFERENCE=false INPUT_CHECK_BRANCH_NAME=false \
+    INPUT_CHECK_PR_SIZE=false INPUT_CHECK_LABEL=false INPUT_CHECK_TARGET_BRANCH=false
+
+result_mentions_warnings() {
+    grep -qF '**Result:** 1/2 checks passed, 1 with warnings' "$1" \
+        && [[ "$(output_value "$2" result)" == "pass" ]]
+}
+run_summary_case "result line mentions warnings" result_mentions_warnings \
+    INPUT_PR_TITLE='bad title' INPUT_PR_BODY='Fixes #1 with a long enough description' \
+    INPUT_WARN_CHECKS='title' \
+    INPUT_CHECK_TITLE=true INPUT_CHECK_DESCRIPTION=true \
+    INPUT_CHECK_ISSUE_REFERENCE=false INPUT_CHECK_BRANCH_NAME=false \
+    INPUT_CHECK_PR_SIZE=false INPUT_CHECK_LABEL=false INPUT_CHECK_TARGET_BRANCH=false
+
+print_results "check_orchestrator"|| exit 1

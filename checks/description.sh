@@ -15,8 +15,8 @@ BODY="${INPUT_PR_BODY:-}"
 MIN_LENGTH="${INPUT_DESCRIPTION_MIN_LENGTH:-20}"
 
 if ! [[ "$MIN_LENGTH" =~ ^[0-9]+$ ]]; then
-    echo "fail: invalid min length '$MIN_LENGTH'"
-    exit 1
+    echo "error: invalid min length '$MIN_LENGTH'"
+    exit 2
 fi
 
 if [[ -z "$BODY" ]]; then

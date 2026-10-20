@@ -35,6 +35,7 @@ emit_skip() {
     set_output "result" "pass"
     set_output "pass-count" "0"
     set_output "fail-count" "0"
+    set_output "warn-count" "0"
     set_output "total-count" "0"
     echo ""
     echo "PR Requirements: skipped (${reason})"
@@ -143,6 +144,8 @@ remediation_for() {
         "Target Branch")
             targets="${INPUT_ALLOWED_TARGET_BRANCHES:-main,master}"
             echo "- **Target Branch** — retarget the PR to an allowed branch: $(code "$targets" "main, master")." ;;
+        "Warn Checks")
+            echo "- **Warn Checks** — list only known check ids in \`warn-checks\`: ${KNOWN_IDS[*]}." ;;
         *)
             echo "- **$1** — see the check details above and the contributing guidelines." ;;
     esac
@@ -154,16 +157,57 @@ declare -a CHECK_RESULTS=()
 declare -a CHECK_MESSAGES=()
 FAIL_COUNT=0
 PASS_COUNT=0
+WARN_COUNT=0
+# Action-level config errors (not tied to an executed check): fail the job
+# but stay out of pass/fail/total counts
+CONFIG_ERROR_COUNT=0
+
+lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+
+# Check id derived from the registry toggle, e.g. INPUT_CHECK_PR_SIZE -> pr-size
+check_id_for() { lower "${1#INPUT_CHECK_}" | tr '_' '-'; }
+
+# Return 0 when $1 equals any of the remaining arguments.
+contains() {
+    local needle="$1" item
+    shift
+    for item in "$@"; do
+        [[ "$item" == "$needle" ]] && return 0
+    done
+    return 1
+}
+
+declare -a KNOWN_IDS=()
+for entry in "${REGISTRY[@]}"; do
+    IFS='|' read -r env_var _ _ _ <<< "$entry"
+    KNOWN_IDS+=("$(check_id_for "$env_var")")
+done
+
+declare -a WARN_IDS=()
+split_csv "${INPUT_WARN_CHECKS:-}"
+for warn_check in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
+    WARN_IDS+=("$(lower "$warn_check")")
+done
+
+record_result() {
+    local name="$1" result="$2" message="$3"
+    CHECK_NAMES+=("$name")
+    CHECK_RESULTS+=("$result")
+    CHECK_MESSAGES+=("$message")
+    case "$result" in
+        pass) ((PASS_COUNT++)) ;;
+        warn) ((WARN_COUNT++)) ;;
+        config-error) ((CONFIG_ERROR_COUNT++)) ;;
+        *) ((FAIL_COUNT++)) ;;
+    esac
+}
 
 run_check() {
-    local name="$1"
+    local name="$1" check_id="$3"
     local script="${CHECKS_DIR}/$2"
 
     if [[ ! -f "$script" ]]; then
-        CHECK_NAMES+=("$name")
-        CHECK_RESULTS+=("error")
-        CHECK_MESSAGES+=("check script not found: $script")
-        ((FAIL_COUNT++))
+        record_result "$name" "error" "check script not found: $script"
         return
     fi
 
@@ -171,29 +215,43 @@ run_check() {
     output=$(bash "$script" 2>&1)
     exit_code=$?
 
-    CHECK_NAMES+=("$name")
-
+    # Exit 2 is a configuration error: never downgraded to a warning
     if [[ "$exit_code" -eq 0 ]]; then
-        CHECK_RESULTS+=("pass")
-        CHECK_MESSAGES+=("$output")
-        ((PASS_COUNT++))
+        record_result "$name" "pass" "$output"
+    elif [[ "$exit_code" -eq 2 ]]; then
+        record_result "$name" "error" "$output"
+    elif contains "$check_id" ${WARN_IDS[@]+"${WARN_IDS[@]}"}; then
+        record_result "$name" "warn" "$output"
     else
-        CHECK_RESULTS+=("fail")
-        CHECK_MESSAGES+=("$output")
-        ((FAIL_COUNT++))
+        record_result "$name" "fail" "$output"
     fi
 }
 
-for entry in "${REGISTRY[@]}"; do
-    IFS='|' read -r env_var default display_name script_name <<< "$entry"
+for warn_check in ${WARN_IDS[@]+"${WARN_IDS[@]}"}; do
+    if ! contains "$warn_check" "${KNOWN_IDS[@]}"; then
+        record_result "Warn Checks" "config-error" "config error: unknown check '${warn_check}' in input 'warn-checks'"
+    fi
+done
+
+for idx in "${!REGISTRY[@]}"; do
+    IFS='|' read -r env_var default display_name script_name <<< "${REGISTRY[$idx]}"
     enabled="${!env_var:-$default}"
     if [[ "$enabled" == "true" ]]; then
-        run_check "$display_name" "$script_name"
+        run_check "$display_name" "$script_name" "${KNOWN_IDS[$idx]}"
     fi
 done
 
 # ── Summary ──────────────────────────────────────────────────────────────────
-TOTAL=$((PASS_COUNT + FAIL_COUNT))
+TOTAL=$((PASS_COUNT + FAIL_COUNT + WARN_COUNT))
+BLOCKING_COUNT=$((FAIL_COUNT + CONFIG_ERROR_COUNT))
+
+RESULT_EXTRA=""
+if [[ "$WARN_COUNT" -gt 0 ]]; then
+    RESULT_EXTRA+=", ${WARN_COUNT} with warnings"
+fi
+if [[ "$CONFIG_ERROR_COUNT" -gt 0 ]]; then
+    RESULT_EXTRA+=", ${CONFIG_ERROR_COUNT} configuration error(s)"
+fi
 
 {
     echo "## PR Requirements Check"
@@ -205,38 +263,44 @@ TOTAL=$((PASS_COUNT + FAIL_COUNT))
         if [[ "${CHECK_RESULTS[$i]}" == "pass" ]]; then
             echo "| ${CHECK_NAMES[$i]} | ✅ Pass | - |"
         else
+            case "${CHECK_RESULTS[$i]}" in
+                warn) status="🟡 Warning" ;;
+                error|config-error) status="⚠️ Error" ;;
+                *) status="❌ Fail" ;;
+            esac
             # Render PR-controlled text as an inert code span: strip backticks,
             # flatten newlines, escape table pipes
             detail="${CHECK_MESSAGES[$i]#fail: }"
+            detail="${detail#error: }"
             detail=$(printf '%s' "$detail" | tr '\n' ' ' | tr -d '`' | sed 's/|/\\|/g')
             if [[ -z "$detail" ]]; then
                 detail="-"
             else
                 detail="\`${detail}\`"
             fi
-            echo "| ${CHECK_NAMES[$i]} | ❌ Fail | ${detail} |"
+            echo "| ${CHECK_NAMES[$i]} | ${status} | ${detail} |"
         fi
     done
 
     echo ""
-    echo "**Result:** ${PASS_COUNT}/${TOTAL} checks passed"
+    echo "**Result:** ${PASS_COUNT}/${TOTAL} checks passed${RESULT_EXTRA}"
 
     # ── How to fix (failures only) ───────────────────────────────────────────
-    if [[ "$FAIL_COUNT" -gt 0 ]]; then
+    if [[ "$BLOCKING_COUNT" -gt 0 ]]; then
         echo ""
         echo "### How to fix"
         echo ""
         echo "The checks above must pass before this PR can merge."
         echo ""
         for i in "${!CHECK_NAMES[@]}"; do
-            if [[ "${CHECK_RESULTS[$i]}" != "pass" ]]; then
+            if [[ "${CHECK_RESULTS[$i]}" != "pass" && "${CHECK_RESULTS[$i]}" != "warn" ]]; then
                 remediation_for "${CHECK_NAMES[$i]}"
             fi
         done
     fi
 } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
 
-if [[ "$FAIL_COUNT" -eq 0 ]]; then
+if [[ "$BLOCKING_COUNT" -eq 0 ]]; then
     RESULT="pass"
 else
     RESULT="fail"
@@ -244,20 +308,31 @@ fi
 set_output "result" "$RESULT"
 set_output "pass-count" "$PASS_COUNT"
 set_output "fail-count" "$FAIL_COUNT"
+set_output "warn-count" "$WARN_COUNT"
 set_output "total-count" "$TOTAL"
 
 # CLI output
 echo ""
-echo "PR Requirements: ${PASS_COUNT}/${TOTAL} passed"
+echo "PR Requirements: ${PASS_COUNT}/${TOTAL} passed${RESULT_EXTRA}"
 for i in "${!CHECK_NAMES[@]}"; do
     if [[ "${CHECK_RESULTS[$i]}" == "pass" ]]; then
         echo "  ✅ ${CHECK_NAMES[$i]}"
     else
-        echo "  ❌ ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}"
+        case "${CHECK_RESULTS[$i]}" in
+            warn)
+                echo "  🟡 ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}"
+                warn_msg="${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]#fail: }"
+                warn_msg="${warn_msg//'%'/%25}"
+                warn_msg="${warn_msg//$'\r'/%0D}"
+                warn_msg="${warn_msg//$'\n'/%0A}"
+                echo "::warning::${warn_msg}" ;;
+            error|config-error) echo "  ⚠️ ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
+            *) echo "  ❌ ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
+        esac
     fi
 done
 
-if [[ "$FAIL_COUNT" -gt 0 ]]; then
+if [[ "$BLOCKING_COUNT" -gt 0 ]]; then
     exit 1
 fi
 exit 0

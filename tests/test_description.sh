@@ -78,4 +78,7 @@ INPUT_DESCRIPTION_REQUIRED_SECTIONS="" \
 INPUT_PR_BODY="Long enough body without any sections at all" \
     assert_pass "no sections required" "$CHECK"
 
+INPUT_PR_BODY="Long enough description body" INPUT_DESCRIPTION_MIN_LENGTH="abc" \
+    assert_config_error "non-numeric min length" "$CHECK"
+
 print_results "description" || exit 1
