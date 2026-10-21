@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check PR requirements
-        uses: AbsaOSS/check-pr-requirements@v0
+        uses: AbsaOSS/check-pr-requirements@<commit-sha> # v0.x.y
         with:
           check-title: "true"
           check-description: "true"
@@ -46,7 +46,7 @@ jobs:
 Only check what you need:
 
 ```yaml
-- uses: AbsaOSS/check-pr-requirements@v0
+- uses: AbsaOSS/check-pr-requirements@<commit-sha> # v0.x.y
   with:
     check-title: "true"
     check-description: "false"
@@ -55,11 +55,15 @@ Only check what you need:
 
 ### Versioning
 
-`@v0` follows the latest `v0.x.y` release (the major tag is moved on every release). For the strongest supply-chain guarantee, pin a full commit SHA and let Dependabot update it:
+Pin the action to the full commit SHA of a release, with the version in a comment so Dependabot can update it:
 
 ```yaml
 - uses: AbsaOSS/check-pr-requirements@<commit-sha> # v0.x.y
 ```
+
+Replace `<commit-sha>` with the SHA of the release tag (`git ls-remote --tags https://github.com/AbsaOSS/check-pr-requirements`). Supply-chain scanners such as Aqua/Trivy and the OpenSSF Scorecard flag actions referenced by a tag, because a tag can be moved.
+
+`@v0` also works and follows the latest `v0.x.y` release (the major tag is moved on every release), but it is a mutable reference and will be reported by those scanners; use it only where your policy allows tag references.
 
 See [CHANGELOG.md](CHANGELOG.md) for behaviour changes between releases.
 
