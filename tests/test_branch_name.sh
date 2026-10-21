@@ -35,6 +35,14 @@ INPUT_BRANCH_PATTERN="" \
 INPUT_PR_BRANCH="support/1.0.4" \
     assert_pass "support branch" "$CHECK"
 
+INPUT_BRANCH_PATTERN="" \
+INPUT_PR_BRANCH="dependabot/github_actions/actions/checkout-7.0.0" \
+    assert_pass "nested dependabot branch" "$CHECK"
+
+INPUT_BRANCH_PATTERN="" \
+INPUT_PR_BRANCH="feature/auth/oauth2-login" \
+    assert_pass "nested feature branch" "$CHECK"
+
 # ── Fail cases ───────────────────────────────────────────────────────────────
 
 INPUT_BRANCH_PATTERN="" \
@@ -91,5 +99,16 @@ INPUT_BRANCH_REQUIRE_TICKET="true" \
 INPUT_BRANCH_TICKET_PATTERN="" \
 INPUT_PR_BRANCH="feature/123-user-login" \
     assert_pass "ticket pattern: default numeric still works" "$CHECK"
+
+# ── Configuration ────────────────────────────────────────────────────────────
+
+INPUT_PR_BRANCH="feature/add-login" INPUT_BRANCH_PATTERN="([" \
+    assert_output_contains "invalid branch regex is a config error" "$CHECK" "config error: input 'branch-pattern'"
+
+INPUT_PR_BRANCH="feature/user-login" INPUT_BRANCH_PATTERN="" INPUT_BRANCH_REQUIRE_TICKET="TRUE" \
+    assert_output_contains "require-ticket accepts upper-case TRUE" "$CHECK" "must include a ticket"
+
+INPUT_PR_BRANCH="feature/user-login" INPUT_BRANCH_PATTERN="" INPUT_BRANCH_REQUIRE_TICKET="yes" \
+    assert_output_contains "non-boolean require-ticket is a config error" "$CHECK" "config error: input 'branch-require-ticket'"
 
 print_results "branch_name" || exit 1

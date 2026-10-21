@@ -6,18 +6,14 @@ TESTS_DIR="$SCRIPT_DIR"
 
 FAILED_FILES=()
 
-# ── Test Registry ────────────────────────────────────────────────────────────
-# To add tests for a new check: create test_<name>.sh and append here
-TEST_FILES=(
-    "test_title_format.sh"
-    "test_description.sh"
-    "test_issue_reference.sh"
-    "test_branch_name.sh"
-    "test_pr_size.sh"
-    "test_label_presence.sh"
-    "test_target_branch.sh"
-    "test_check_orchestrator.sh"
-)
+# Every tests/test_*.sh file except the shared helpers is a test file
+TEST_FILES=()
+for test_path in "$TESTS_DIR"/test_*.sh; do
+    test_file="$(basename "$test_path")"
+    if [[ "$test_file" != "test_helpers.sh" ]]; then
+        TEST_FILES+=("$test_file")
+    fi
+done
 
 run_test_file() {
     local test_file="$1"

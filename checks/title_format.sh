@@ -9,15 +9,31 @@ set -euo pipefail
 #   INPUT_TITLE_TYPES   - conventional: comma-separated allowed types (default: standard set)
 #   INPUT_TITLE_SCOPES  - conventional: comma-separated allowed scopes (empty = any)
 #   INPUT_TITLE_PATTERN - custom: regex the title must match
+#   INPUT_TITLE_REQUIRE_SCOPE - conventional: a scope is mandatory (default: false)
+#   INPUT_TITLE_MAX_LENGTH    - maximum title length for every format (empty = unlimited)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib.sh"
 
-TITLE="${INPUT_PR_TITLE:?PR title is required}"
-FORMATS="${INPUT_TITLE_FORMATS:-conventional}"
-TYPES="${INPUT_TITLE_TYPES:-feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert}"
+TITLE="${INPUT_PR_TITLE:-}"
+require_pr_data "$TITLE" "pr-title"
+FORMATS="${INPUT_TITLE_FORMATS:-$DEFAULT_TITLE_FORMATS}"
+TYPES="${INPUT_TITLE_TYPES:-$DEFAULT_TITLE_TYPES}"
 SCOPES="${INPUT_TITLE_SCOPES:-}"
 CUSTOM_PATTERN="${INPUT_TITLE_PATTERN:-}"
+REQUIRE_SCOPE="${INPUT_TITLE_REQUIRE_SCOPE:-false}"
+MAX_LENGTH="${INPUT_TITLE_MAX_LENGTH:-}"
+
+# Why the title is not a valid conventional title, shown when no format matches
+CONVENTIONAL_MISMATCH=""
+
+if [[ -n "$MAX_LENGTH" ]]; then
+    require_whole_number "$MAX_LENGTH" "title-max-length"
+    if [[ ${#TITLE} -gt "$MAX_LENGTH" ]]; then
+        echo "fail: title is ${#TITLE} characters (maximum $MAX_LENGTH)"
+        exit 1
+    fi
+fi
 
 # Conventional commits: parse the title once with a fixed pattern, then compare
 # the captured type/scope against the allowed lists as plain strings. User
@@ -25,6 +41,7 @@ CUSTOM_PATTERN="${INPUT_TITLE_PATTERN:-}"
 matches_conventional() {
     local pattern='^([^()!:[:space:]]+)(\(([^)]+)\))?(!)?: .+'
     if [[ ! "$TITLE" =~ $pattern ]]; then
+        CONVENTIONAL_MISMATCH="expected 'type(scope): description'"
         return 1
     fi
 
@@ -40,6 +57,12 @@ matches_conventional() {
         fi
     done
     if [[ "$found" != "true" ]]; then
+        CONVENTIONAL_MISMATCH="type '$title_type' is not allowed (allowed: $TYPES)"
+        return 1
+    fi
+
+    if [[ -z "$title_scope" ]] && is_true "$REQUIRE_SCOPE" "title-require-scope"; then
+        CONVENTIONAL_MISMATCH="a scope is required, e.g. '$title_type(api): ...'"
         return 1
     fi
 
@@ -54,6 +77,7 @@ matches_conventional() {
             fi
         done
         if [[ "$found" != "true" ]]; then
+            CONVENTIONAL_MISMATCH="scope '$title_scope' is not allowed (allowed: $SCOPES)"
             return 1
         fi
     fi
@@ -76,8 +100,7 @@ split_csv "$FORMATS"
 FORMAT_LIST=(${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"})
 
 if [[ ${#FORMAT_LIST[@]} -eq 0 ]]; then
-    echo "error: no title formats configured"
-    exit 2
+    config_error "input 'title-formats' is empty"
 fi
 
 # Validate the whole config up front so a format that matches early cannot
@@ -87,13 +110,12 @@ for format in "${FORMAT_LIST[@]}"; do
         conventional|issue-number) ;;
         custom)
             if [[ -z "$CUSTOM_PATTERN" ]]; then
-                echo "error: title format 'custom' requires title-pattern to be set"
-                exit 2
+                config_error "title format 'custom' requires input 'title-pattern' to be set"
             fi
+            require_valid_regex "$CUSTOM_PATTERN" "title-pattern"
             ;;
         *)
-            echo "error: unknown title format '$format' (allowed: conventional, issue-number, custom)"
-            exit 2
+            config_error "unknown title format '$format' in input 'title-formats' (allowed: conventional, issue-number, custom)"
             ;;
     esac
 done
@@ -121,5 +143,9 @@ for format in "${FORMAT_LIST[@]}"; do
     esac
 done
 
-echo "fail: title '$TITLE' does not match any allowed format: ${FORMAT_LIST[*]}"
+if [[ -n "$CONVENTIONAL_MISMATCH" ]]; then
+    echo "fail: title '$TITLE' does not match any allowed format: ${FORMAT_LIST[*]} (conventional: $CONVENTIONAL_MISMATCH)"
+else
+    echo "fail: title '$TITLE' does not match any allowed format: ${FORMAT_LIST[*]}"
+fi
 exit 1

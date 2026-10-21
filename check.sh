@@ -26,47 +26,41 @@ set_output() {
 inert() { printf '%s' "$1" | tr '\n' ' ' | tr -d '`'; }
 
 emit_skip() {
-    local reason="$1"
+    local subject="$1" value="$2" input_name="$3"
+    local value_text
+    value_text="$(inert "$value")"
     {
         echo "## PR Requirements Check"
         echo ""
-        echo "Checks skipped: ${reason}."
+        echo "Checks skipped: ${subject} \`${value_text}\` matched \`${input_name}\`."
     } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
     set_output "result" "pass"
     set_output "pass-count" "0"
     set_output "fail-count" "0"
     set_output "warn-count" "0"
     set_output "total-count" "0"
+    set_output "skipped" "true"
+    set_output "skip-reason" "${subject} ${value_text} matched ${input_name}"
     echo ""
-    echo "PR Requirements: skipped (${reason})"
+    echo "PR Requirements: skipped (${subject} ${value_text} matched ${input_name})"
     exit 0
 }
 
 PR_AUTHOR="${INPUT_PR_AUTHOR:-}"
 SKIP_ACTORS="${INPUT_SKIP_ACTORS:-}"
-if [[ -n "$PR_AUTHOR" && -n "$SKIP_ACTORS" ]]; then
-    split_csv "$SKIP_ACTORS"
-    for actor in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
-        if [[ "$PR_AUTHOR" == "$actor" ]]; then
-            emit_skip "author \`$(inert "$PR_AUTHOR")\` matched \`skip-actors\`"
-        fi
-    done
+if [[ -n "$PR_AUTHOR" ]] && csv_contains_ignore_case "$PR_AUTHOR" "$SKIP_ACTORS"; then
+    emit_skip "author" "$PR_AUTHOR" "skip-actors"
 fi
 
 PR_LABELS="${INPUT_LABELS:-}"
 SKIP_LABELS="${INPUT_SKIP_LABELS:-}"
-if [[ -n "$PR_LABELS" && -n "$SKIP_LABELS" ]]; then
-    split_csv "$PR_LABELS"
-    labels_arr=(${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"})
-    split_csv "$SKIP_LABELS"
-    for skip in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
-        for lbl in ${labels_arr[@]+"${labels_arr[@]}"}; do
-            if [[ "$lbl" == "$skip" ]]; then
-                emit_skip "label \`$(inert "$skip")\` matched \`skip-labels\`"
-            fi
-        done
-    done
-fi
+split_csv "$SKIP_LABELS"
+skip_label_list=(${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"})
+for skip_label in ${skip_label_list[@]+"${skip_label_list[@]}"}; do
+    if csv_contains_ignore_case "$skip_label" "$PR_LABELS"; then
+        emit_skip "label" "$skip_label" "skip-labels"
+    fi
+done
 
 # ── Check Registry ──────────────────────────────────────────────────────────
 # Format: "env_toggle|default|display_name|script_name"
@@ -79,6 +73,7 @@ REGISTRY=(
     "INPUT_CHECK_PR_SIZE|false|PR Size|pr_size.sh"
     "INPUT_CHECK_LABEL|false|Label Presence|label_presence.sh"
     "INPUT_CHECK_TARGET_BRANCH|false|Target Branch|target_branch.sh"
+    "INPUT_CHECK_RELEASE_NOTES|false|Release Notes|release_notes.sh"
 )
 
 # ── Remediation tips ──────────────────────────────────────────────────────────
@@ -102,38 +97,53 @@ remediation_for() {
 
     case "$1" in
         "PR Title")
-            title_formats="${INPUT_TITLE_FORMATS:-conventional}"
-            title_types="${INPUT_TITLE_TYPES:-feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert}"
+            title_formats="${INPUT_TITLE_FORMATS:-$DEFAULT_TITLE_FORMATS}"
+            title_types="${INPUT_TITLE_TYPES:-$DEFAULT_TITLE_TYPES}"
             echo "- **PR Title** — the title must match one of these formats: $(code "$title_formats" conventional)."
             if [[ ",$title_formats," == *",conventional,"* ]]; then
                 echo "  - Allowed conventional types: $(code "$title_types" "feat, fix, ...")."
+                if [[ "$(to_lower "${INPUT_TITLE_REQUIRE_SCOPE:-false}")" == "true" ]]; then
+                    echo "  - A scope is required, e.g. \`feat(api): add retry logic\`."
+                fi
                 echo "  - ✅ \`feat: add retry logic\`"
                 echo "  - ❌ \`added retry logic\`"
+            fi
+            if [[ -n "${INPUT_TITLE_MAX_LENGTH:-}" ]]; then
+                echo "  - Keep the title at or below $(code "$INPUT_TITLE_MAX_LENGTH" -) characters."
             fi ;;
         "PR Description")
-            desc_min="${INPUT_DESCRIPTION_MIN_LENGTH:-20}"
+            desc_min="${INPUT_DESCRIPTION_MIN_LENGTH:-$DEFAULT_DESCRIPTION_MIN_LENGTH}"
             desc_sections="${INPUT_DESCRIPTION_REQUIRED_SECTIONS:-}"
             echo "- **PR Description** — write a description of at least $(code "$desc_min" 20) characters."
             if [[ -n "$desc_sections" ]]; then
                 echo "  - Required sections: $(code "$desc_sections" -)."
+            fi
+            if [[ "$(to_lower "${INPUT_DESCRIPTION_IGNORE_COMMENTS:-false}")" == "true" ]]; then
+                echo "  - Template comments (\`<!-- ... -->\`) do not count; replace them with your own text."
+            fi
+            if [[ "$(to_lower "${INPUT_DESCRIPTION_REQUIRE_SECTION_CONTENT:-false}")" == "true" ]]; then
+                echo "  - Write some text under each required section heading."
             fi ;;
         "Issue Reference")
             issue_keyword="${INPUT_ISSUE_REFERENCE_REQUIRE_KEYWORD:-false}"
-            if [[ "$issue_keyword" == "true" ]]; then
+            if [[ "$(to_lower "$issue_keyword")" == "true" ]]; then
                 echo "- **Issue Reference** — reference an issue with a keyword, e.g. \`Closes #123\` or \`Fixes AB#123\`."
             else
                 echo "- **Issue Reference** — reference an issue in the description, e.g. \`#123\`."
             fi ;;
         "Branch Name")
-            branch_pattern="${INPUT_BRANCH_PATTERN:-^(feature|bugfix|hotfix|release|support|chore|docs|ci|dependabot)/[a-zA-Z0-9._-]+\$}"
+            branch_pattern="${INPUT_BRANCH_PATTERN:-$DEFAULT_BRANCH_PATTERN}"
             echo "- **Branch Name** — the branch name must match $(code "$branch_pattern" -), e.g. \`feature/add-login\`."
-            if [[ "${INPUT_BRANCH_REQUIRE_TICKET:-false}" == "true" ]]; then
-                branch_ticket="${INPUT_BRANCH_TICKET_PATTERN:-^[^/]+/[0-9]+-}"
+            if [[ "$(to_lower "${INPUT_BRANCH_REQUIRE_TICKET:-false}")" == "true" ]]; then
+                branch_ticket="${INPUT_BRANCH_TICKET_PATTERN:-$DEFAULT_BRANCH_TICKET_PATTERN}"
                 echo "  - Must include a ticket after the prefix, matching $(code "$branch_ticket" -), e.g. \`feature/123-add-login\`."
             fi ;;
         "PR Size")
-            max_files="${INPUT_MAX_FILES_CHANGED:-50}"
-            echo "- **PR Size** — keep changed files at or below $(code "$max_files" 50); split larger changes into smaller PRs." ;;
+            max_files="${INPUT_MAX_FILES_CHANGED:-$DEFAULT_MAX_FILES_CHANGED}"
+            echo "- **PR Size** — keep changed files at or below $(code "$max_files" 50); split larger changes into smaller PRs."
+            if [[ -n "${INPUT_MAX_LINES_CHANGED:-}" ]]; then
+                echo "  - Keep changed lines (additions + deletions) at or below $(code "$INPUT_MAX_LINES_CHANGED" -)."
+            fi ;;
         "Label Presence")
             req_labels="${INPUT_REQUIRED_LABELS:-}"
             if [[ -n "$req_labels" ]]; then
@@ -142,8 +152,13 @@ remediation_for() {
                 echo "- **Label Presence** — add at least one label to the PR."
             fi ;;
         "Target Branch")
-            targets="${INPUT_ALLOWED_TARGET_BRANCHES:-main,master}"
+            targets="${INPUT_ALLOWED_TARGET_BRANCHES:-$DEFAULT_ALLOWED_TARGET_BRANCHES}"
             echo "- **Target Branch** — retarget the PR to an allowed branch: $(code "$targets" "main, master")." ;;
+        "Release Notes")
+            echo "- **Release Notes** — add a heading matching $(code "${INPUT_RELEASE_NOTES_TAG:-$DEFAULT_RELEASE_NOTES_TAG}" -) followed directly by a bullet list, e.g. \`- Added retry logic\`."
+            if [[ -n "${INPUT_RELEASE_NOTES_SKIP_LABELS-$DEFAULT_RELEASE_NOTES_SKIP_LABELS}" ]]; then
+                echo "  - If the change needs no release notes, add a label: $(code "${INPUT_RELEASE_NOTES_SKIP_LABELS-$DEFAULT_RELEASE_NOTES_SKIP_LABELS}" -)."
+            fi ;;
         "Warn Checks")
             echo "- **Warn Checks** — list only known check ids in \`warn-checks\`: ${KNOWN_IDS[*]}." ;;
         *)
@@ -162,10 +177,8 @@ WARN_COUNT=0
 # but stay out of pass/fail/total counts
 CONFIG_ERROR_COUNT=0
 
-lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
-
 # Check id derived from the registry toggle, e.g. INPUT_CHECK_PR_SIZE -> pr-size
-check_id_for() { lower "${1#INPUT_CHECK_}" | tr '_' '-'; }
+check_id_for() { to_lower "${1#INPUT_CHECK_}" | tr '_' '-'; }
 
 # Return 0 when $1 equals any of the remaining arguments.
 contains() {
@@ -186,9 +199,12 @@ done
 declare -a WARN_IDS=()
 split_csv "${INPUT_WARN_CHECKS:-}"
 for warn_check in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
-    WARN_IDS+=("$(lower "$warn_check")")
+    WARN_IDS+=("$(to_lower "$warn_check")")
 done
 
+# result is pass, fail (the PR breaks a rule), warn (a fail listed in
+# warn-checks), error (invalid check configuration) or config-error (invalid
+# action-level configuration, kept out of the counts)
 record_result() {
     local name="$1" result="$2" message="$3"
     CHECK_NAMES+=("$name")
@@ -218,13 +234,18 @@ run_check() {
     # Exit 2 is a configuration error: never downgraded to a warning
     if [[ "$exit_code" -eq 0 ]]; then
         record_result "$name" "pass" "$output"
-    elif [[ "$exit_code" -eq 2 ]]; then
+    elif [[ "$exit_code" -eq "$CONFIG_ERROR_EXIT" ]]; then
         record_result "$name" "error" "$output"
     elif contains "$check_id" ${WARN_IDS[@]+"${WARN_IDS[@]}"}; then
         record_result "$name" "warn" "$output"
     else
         record_result "$name" "fail" "$output"
     fi
+}
+
+# INPUT_CHECK_PR_SIZE -> check-pr-size
+input_name_of() {
+    printf '%s' "${1#INPUT_}" | tr '[:upper:]_' '[:lower:]-'
 }
 
 for warn_check in ${WARN_IDS[@]+"${WARN_IDS[@]}"}; do
@@ -235,10 +256,13 @@ done
 
 for idx in "${!REGISTRY[@]}"; do
     IFS='|' read -r env_var default display_name script_name <<< "${REGISTRY[$idx]}"
-    enabled="${!env_var:-$default}"
-    if [[ "$enabled" == "true" ]]; then
-        run_check "$display_name" "$script_name" "${KNOWN_IDS[$idx]}"
-    fi
+    toggle="${!env_var:-$default}"
+    case "$(to_lower "$toggle")" in
+        true) run_check "$display_name" "$script_name" "${KNOWN_IDS[$idx]}" ;;
+        false) ;;
+        *) record_result "$display_name" "error" \
+            "config error: input '$(input_name_of "$env_var")' must be true or false, got '${toggle}'" ;;
+    esac
 done
 
 # ── Summary ──────────────────────────────────────────────────────────────────
@@ -293,9 +317,10 @@ fi
         echo "The checks above must pass before this PR can merge."
         echo ""
         for i in "${!CHECK_NAMES[@]}"; do
-            if [[ "${CHECK_RESULTS[$i]}" != "pass" && "${CHECK_RESULTS[$i]}" != "warn" ]]; then
-                remediation_for "${CHECK_NAMES[$i]}"
-            fi
+            case "${CHECK_RESULTS[$i]}" in
+                fail|config-error) remediation_for "${CHECK_NAMES[$i]}" ;;
+                error) echo "- **${CHECK_NAMES[$i]}** — the action configuration in the workflow file is invalid; fix the input named in the details above." ;;
+            esac
         done
     fi
 } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
@@ -310,26 +335,25 @@ set_output "pass-count" "$PASS_COUNT"
 set_output "fail-count" "$FAIL_COUNT"
 set_output "warn-count" "$WARN_COUNT"
 set_output "total-count" "$TOTAL"
+set_output "skipped" "false"
+set_output "skip-reason" ""
 
 # CLI output
 echo ""
 echo "PR Requirements: ${PASS_COUNT}/${TOTAL} passed${RESULT_EXTRA}"
 for i in "${!CHECK_NAMES[@]}"; do
-    if [[ "${CHECK_RESULTS[$i]}" == "pass" ]]; then
-        echo "  ✅ ${CHECK_NAMES[$i]}"
-    else
-        case "${CHECK_RESULTS[$i]}" in
-            warn)
-                echo "  🟡 ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}"
-                warn_msg="${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]#fail: }"
-                warn_msg="${warn_msg//'%'/%25}"
-                warn_msg="${warn_msg//$'\r'/%0D}"
-                warn_msg="${warn_msg//$'\n'/%0A}"
-                echo "::warning::${warn_msg}" ;;
-            error|config-error) echo "  ⚠️ ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
-            *) echo "  ❌ ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
-        esac
-    fi
+    case "${CHECK_RESULTS[$i]}" in
+        pass) echo "  ✅ ${CHECK_NAMES[$i]}" ;;
+        warn)
+            echo "  🟡 ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}"
+            warn_msg="${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]#fail: }"
+            warn_msg="${warn_msg//'%'/%25}"
+            warn_msg="${warn_msg//$'\r'/%0D}"
+            warn_msg="${warn_msg//$'\n'/%0A}"
+            echo "::warning::${warn_msg}" ;;
+        error|config-error) echo "  ⚠️ ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
+        *) echo "  ❌ ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
+    esac
 done
 
 if [[ "$BLOCKING_COUNT" -gt 0 ]]; then

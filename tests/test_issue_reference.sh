@@ -92,4 +92,36 @@ INPUT_ISSUE_REFERENCE_REQUIRE_KEYWORD="true" \
 INPUT_PR_TITLE="" INPUT_PR_BODY="See https://github.com/org/repo/issues/55" \
     assert_fail "keyword required: bare URL rejected" "$CHECK"
 
+INPUT_ISSUE_REFERENCE_REQUIRE_KEYWORD="true" \
+INPUT_PR_TITLE="" INPUT_PR_BODY="Add a prefix #12 to ids" \
+    assert_fail "keyword required: keyword inside a word rejected" "$CHECK"
+
+INPUT_ISSUE_REFERENCE_REQUIRE_KEYWORD="true" \
+INPUT_PR_TITLE="Fixes #42" INPUT_PR_BODY="No keyword in body" \
+    assert_fail "keyword required: keyword in title only rejected" "$CHECK"
+
+INPUT_ISSUE_REFERENCE_REQUIRE_KEYWORD="true" \
+INPUT_PR_TITLE="" INPUT_PR_BODY="Fixes org/repo#42" \
+    assert_pass "keyword required: cross-repo reference" "$CHECK"
+
+# ── False positives ──────────────────────────────────────────────────────────
+
+INPUT_PR_TITLE="" INPUT_PR_BODY="See https://example.com/page#42" \
+    assert_fail "URL fragment is not an issue reference" "$CHECK"
+
+INPUT_PR_TITLE="" INPUT_PR_BODY="Written in C#10 and F#7" \
+    assert_fail "language name is not an issue reference" "$CHECK"
+
+INPUT_PR_TITLE="" INPUT_PR_BODY="Escaped &#123; entity" \
+    assert_fail "HTML entity is not an issue reference" "$CHECK"
+
+INPUT_PR_TITLE="" INPUT_PR_BODY="Colour #12ab34 changed" \
+    assert_fail "hex colour is not an issue reference" "$CHECK"
+
+INPUT_PR_TITLE="" INPUT_PR_BODY="Part of org/repo#42" \
+    assert_pass "cross-repo bare reference" "$CHECK"
+
+INPUT_PR_TITLE="" INPUT_PR_BODY="(#42)" \
+    assert_pass "reference in parentheses" "$CHECK"
+
 print_results "issue_reference" || exit 1

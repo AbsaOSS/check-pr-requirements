@@ -43,7 +43,7 @@ jobs:
           title-types: "feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert"
           description-min-length: "20"
           max-files-changed: "50"
-          branch-pattern: "^(feature|bugfix|hotfix|release|support|chore|docs|ci|dependabot)/[a-zA-Z0-9._-]+$"
+          branch-pattern: "^(feature|bugfix|hotfix|release|support|chore|docs|ci|dependabot)/[a-zA-Z0-9._/-]+$"
           allowed-target-branches: "main,master"
           # Bypass all checks for bot authors (comma-separated logins). Empty = no bypass.
           skip-actors: "dependabot[bot]"

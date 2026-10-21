@@ -7,42 +7,51 @@ branding:
   color: "green"
 
 inputs:
-  # PR data
+  # PR data (defaults read the pull_request event; pass explicit values to override)
   pr-title:
     description: "Pull request title"
-    required: true
+    required: false
+    default: ${{ github.event.pull_request.title }}
   pr-body:
     description: "Pull request body/description"
     required: false
-    default: ""
+    default: ${{ github.event.pull_request.body }}
   pr-branch:
     description: "Source branch name"
     required: false
-    default: ""
+    default: ${{ github.event.pull_request.head.ref }}
   pr-number:
     description: "Pull request number"
     required: false
-    default: ""
+    default: ${{ github.event.pull_request.number }}
   target-branch:
     description: "Target branch name"
     required: false
-    default: ""
+    default: ${{ github.event.pull_request.base.ref }}
   files-changed:
     description: "Number of files changed"
     required: false
-    default: "0"
+    default: ${{ github.event.pull_request.changed_files }}
+  additions:
+    description: "Number of lines added (used with max-lines-changed)"
+    required: false
+    default: ${{ github.event.pull_request.additions }}
+  deletions:
+    description: "Number of lines deleted (used with max-lines-changed)"
+    required: false
+    default: ${{ github.event.pull_request.deletions }}
   labels:
     description: "Comma-separated list of PR labels"
     required: false
-    default: ""
+    default: ${{ join(github.event.pull_request.labels.*.name, ',') }}
   pr-author:
     description: "PR author login (used with skip-actors to bypass checks for bots)"
     required: false
-    default: ""
+    default: ${{ github.event.pull_request.user.login }}
   github-token:
-    description: "GitHub token for API access (required for release notes check)"
+    description: "GitHub token for API access (used by the release notes check)"
     required: false
-    default: ""
+    default: ${{ github.token }}
 
   # Check toggles
   check-title:
@@ -95,6 +104,14 @@ inputs:
     description: "Regex the title must match (custom format)"
     required: false
     default: ""
+  title-require-scope:
+    description: "Require a scope in conventional titles, e.g. feat(api): ..."
+    required: false
+    default: "false"
+  title-max-length:
+    description: "Maximum title length in characters, applied to every format (empty = unlimited)"
+    required: false
+    default: ""
   description-min-length:
     description: "Minimum PR description length in characters"
     required: false
@@ -103,6 +120,14 @@ inputs:
     description: "Comma-separated headings that must appear in the PR body, e.g. '## Release Notes' (empty = none)"
     required: false
     default: ""
+  description-ignore-comments:
+    description: "Ignore <!-- --> comments (e.g. PR template hints) when checking the description"
+    required: false
+    default: "false"
+  description-require-section-content:
+    description: "Each required section must be a heading line followed by text before the next heading"
+    required: false
+    default: "false"
   issue-reference-require-keyword:
     description: "Only keyword issue references count, e.g. 'Fixes #123', 'Closes AB#12345'"
     required: false
@@ -110,7 +135,7 @@ inputs:
   branch-pattern:
     description: "Full regex override for valid branch names"
     required: false
-    default: "^(feature|bugfix|hotfix|release|support|chore|docs|ci|dependabot)/[a-zA-Z0-9._-]+$"
+    default: "^(feature|bugfix|hotfix|release|support|chore|docs|ci|dependabot)/[a-zA-Z0-9._/-]+$"
   branch-require-ticket:
     description: "Require a ticket after the branch prefix, e.g. feature/123-user-login"
     required: false
@@ -123,6 +148,10 @@ inputs:
     description: "Maximum number of files changed allowed"
     required: false
     default: "50"
+  max-lines-changed:
+    description: "Maximum number of changed lines (additions + deletions) allowed (empty = no limit)"
+    required: false
+    default: ""
   required-labels:
     description: "Comma-separated list of required labels (empty = at least one label)"
     required: false
@@ -172,10 +201,31 @@ outputs:
   total-count:
     description: "Total number of checks run"
     value: ${{ steps.checks.outputs.total-count }}
+  skipped:
+    description: "true when all checks were bypassed by skip-actors or skip-labels"
+    value: ${{ steps.checks.outputs.skipped }}
+  skip-reason:
+    description: "Why the checks were bypassed (empty when not skipped)"
+    value: ${{ steps.checks.outputs.skip-reason }}
 
 runs:
   using: "composite"
   steps:
+    # Runs before check.sh, which reports its outcome in the shared summary
+    - name: Check release notes
+      id: release-notes
+      if: inputs.check-release-notes == 'true'
+      continue-on-error: true
+      uses: AbsaOSS/release-notes-presence-check@8e586b26a5e27f899ee8590a5d988fd4780a3dbf # v0.4.0
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      with:
+        github-repository: ${{ github.repository }}
+        pr-number: ${{ inputs.pr-number || github.event.pull_request.number }}
+        title: ${{ inputs.release-notes-tag }}
+        skip-labels: ${{ inputs.release-notes-skip-labels }}
+        skip-placeholders: ${{ inputs.release-notes-skip-placeholders }}
+
     - name: Run PR checks
       id: checks
       continue-on-error: true
@@ -189,6 +239,8 @@ runs:
         INPUT_SKIP_LABELS: ${{ inputs.skip-labels }}
         INPUT_TARGET_BRANCH: ${{ inputs.target-branch }}
         INPUT_FILES_CHANGED: ${{ inputs.files-changed }}
+        INPUT_ADDITIONS: ${{ inputs.additions }}
+        INPUT_DELETIONS: ${{ inputs.deletions }}
         INPUT_LABELS: ${{ inputs.labels }}
         INPUT_CHECK_TITLE: ${{ inputs.check-title }}
         INPUT_CHECK_DESCRIPTION: ${{ inputs.check-description }}
@@ -197,96 +249,39 @@ runs:
         INPUT_CHECK_PR_SIZE: ${{ inputs.check-pr-size }}
         INPUT_CHECK_LABEL: ${{ inputs.check-label }}
         INPUT_CHECK_TARGET_BRANCH: ${{ inputs.check-target-branch }}
+        INPUT_CHECK_RELEASE_NOTES: ${{ inputs.check-release-notes }}
         INPUT_TITLE_FORMATS: ${{ inputs.title-formats }}
         INPUT_TITLE_TYPES: ${{ inputs.title-types }}
         INPUT_TITLE_SCOPES: ${{ inputs.title-scopes }}
         INPUT_TITLE_PATTERN: ${{ inputs.title-pattern }}
+        INPUT_TITLE_REQUIRE_SCOPE: ${{ inputs.title-require-scope }}
+        INPUT_TITLE_MAX_LENGTH: ${{ inputs.title-max-length }}
         INPUT_DESCRIPTION_MIN_LENGTH: ${{ inputs.description-min-length }}
         INPUT_DESCRIPTION_REQUIRED_SECTIONS: ${{ inputs.description-required-sections }}
+        INPUT_DESCRIPTION_IGNORE_COMMENTS: ${{ inputs.description-ignore-comments }}
+        INPUT_DESCRIPTION_REQUIRE_SECTION_CONTENT: ${{ inputs.description-require-section-content }}
         INPUT_ISSUE_REFERENCE_REQUIRE_KEYWORD: ${{ inputs.issue-reference-require-keyword }}
         INPUT_BRANCH_PATTERN: ${{ inputs.branch-pattern }}
         INPUT_BRANCH_REQUIRE_TICKET: ${{ inputs.branch-require-ticket }}
         INPUT_BRANCH_TICKET_PATTERN: ${{ inputs.branch-ticket-pattern }}
         INPUT_MAX_FILES_CHANGED: ${{ inputs.max-files-changed }}
+        INPUT_MAX_LINES_CHANGED: ${{ inputs.max-lines-changed }}
         INPUT_REQUIRED_LABELS: ${{ inputs.required-labels }}
         INPUT_ALLOWED_TARGET_BRANCHES: ${{ inputs.allowed-target-branches }}
         INPUT_WARN_CHECKS: ${{ inputs.warn-checks }}
+        INPUT_RELEASE_NOTES_TAG: ${{ inputs.release-notes-tag }}
+        INPUT_RELEASE_NOTES_SKIP_LABELS: ${{ inputs.release-notes-skip-labels }}
+        INPUT_RELEASE_NOTES_OUTCOME: ${{ steps.release-notes.outcome }}
       run: bash "${{ github.action_path }}/check.sh"
-
-    - name: Detect bypass
-      id: gate
-      shell: bash
-      env:
-        INPUT_PR_AUTHOR: ${{ inputs.pr-author }}
-        INPUT_SKIP_ACTORS: ${{ inputs.skip-actors }}
-        INPUT_LABELS: ${{ inputs.labels }}
-        INPUT_SKIP_LABELS: ${{ inputs.skip-labels }}
-      run: |
-        skip=false
-        # trim leading/trailing whitespace from $1
-        trim() { local s="$1"; s="${s#"${s%%[![:space:]]*}"}"; printf '%s' "${s%"${s##*[![:space:]]}"}"; }
-
-        author="${INPUT_PR_AUTHOR:-}"
-        if [[ -n "$author" && -n "${INPUT_SKIP_ACTORS:-}" ]]; then
-          IFS=',' read -ra actors <<< "$INPUT_SKIP_ACTORS"
-          for a in "${actors[@]}"; do
-            if [[ "$author" == "$(trim "$a")" && -n "$(trim "$a")" ]]; then skip=true; fi
-          done
-        fi
-
-        if [[ "$skip" != "true" && -n "${INPUT_LABELS:-}" && -n "${INPUT_SKIP_LABELS:-}" ]]; then
-          IFS=',' read -ra labels <<< "$INPUT_LABELS"
-          IFS=',' read -ra skips <<< "$INPUT_SKIP_LABELS"
-          for s in "${skips[@]}"; do
-            st="$(trim "$s")"; [[ -z "$st" ]] && continue
-            for l in "${labels[@]}"; do
-              if [[ "$(trim "$l")" == "$st" ]]; then skip=true; fi
-            done
-          done
-        fi
-
-        echo "skip=$skip" >> "$GITHUB_OUTPUT"
-
-    - name: Check release notes
-      id: release-notes
-      if: inputs.check-release-notes == 'true' && steps.gate.outputs.skip != 'true'
-      continue-on-error: true
-      uses: AbsaOSS/release-notes-presence-check@8e586b26a5e27f899ee8590a5d988fd4780a3dbf # v0.4.0
-      env:
-        GITHUB_TOKEN: ${{ inputs.github-token }}
-      with:
-        github-repository: ${{ github.repository }}
-        pr-number: ${{ inputs.pr-number || github.event.pull_request.number }}
-        title: ${{ inputs.release-notes-tag }}
-        skip-labels: ${{ inputs.release-notes-skip-labels }}
-        skip-placeholders: ${{ inputs.release-notes-skip-placeholders }}
 
     - name: Evaluate results
       id: evaluate
       shell: bash
       env:
-        CHECK_RELEASE_NOTES: ${{ inputs.check-release-notes }}
         CHECKS_OUTCOME: ${{ steps.checks.outcome }}
-        RELEASE_NOTES_OUTCOME: ${{ steps.release-notes.outcome }}
       run: |
-        FAILED=0
-
         if [[ "$CHECKS_OUTCOME" == "failure" ]]; then
-          FAILED=1
-        fi
-
-        if [[ "$CHECK_RELEASE_NOTES" == "true" && "$RELEASE_NOTES_OUTCOME" == "failure" ]]; then
-          FAILED=1
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Release Notes | ❌ Fail | Release notes section missing or empty |" >> "$GITHUB_STEP_SUMMARY"
-        elif [[ "$CHECK_RELEASE_NOTES" == "true" && "$RELEASE_NOTES_OUTCOME" == "success" ]]; then
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Release Notes | ✅ Pass | - |" >> "$GITHUB_STEP_SUMMARY"
-        fi
-
-        if [[ "$FAILED" -eq 1 ]]; then
           echo "result=fail" >> "$GITHUB_OUTPUT"
           exit 1
         fi
-
         echo "result=pass" >> "$GITHUB_OUTPUT"
