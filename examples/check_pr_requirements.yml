@@ -6,10 +6,11 @@ on:
     branches: [main, master]
 
 # Least privilege: contents for checkout-free composite, pull-requests for
-# the release notes presence check (reads PR data via the API)
+# the release notes presence check (reads PR data via the API) and the
+# failure comment (comment-on-failure, on by default)
 permissions:
   contents: read
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   check-pr:
