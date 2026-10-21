@@ -18,19 +18,49 @@ PR_NUMBER="${INPUT_PR_NUMBER:?input 'pr-number' is required for comment-on-failu
 RESULT="${INPUT_RESULT:-}"
 SUMMARY="${INPUT_SUMMARY:-}"
 
-existing_comment_id="$(gh api --paginate "repos/${REPOSITORY}/issues/${PR_NUMBER}/comments" \
-    --jq ".[] | select(.body | startswith(\"${COMMENT_MARKER}\")) | .id" | sed -n 1p)"
+# Fills MARKER_COMMENT_IDS with the ids of our comments, oldest first
+load_marker_comment_ids() {
+    MARKER_COMMENT_IDS=()
+    local ids id
+    ids="$(gh api --paginate "repos/${REPOSITORY}/issues/${PR_NUMBER}/comments" \
+        --jq ".[] | select(.body | startswith(\"${COMMENT_MARKER}\")) | .id")"
+    while IFS= read -r id; do
+        if [[ -n "$id" ]]; then
+            MARKER_COMMENT_IDS+=("$id")
+        fi
+    done <<< "$ids"
+}
+
+# A concurrent run may have deleted the comment already, so a failed delete is
+# not an error.
+delete_comment() {
+    gh api -X DELETE "repos/${REPOSITORY}/issues/comments/$1" >/dev/null || true
+}
+
+# Keeps the oldest marker comment and deletes the rest, so runs that raced
+# past the lookup converge on a single comment.
+delete_duplicates() {
+    local i
+    for ((i = 1; i < ${#MARKER_COMMENT_IDS[@]}; i++)); do
+        delete_comment "${MARKER_COMMENT_IDS[$i]}"
+    done
+}
+
+load_marker_comment_ids
 
 if [[ "$RESULT" == "pass" ]]; then
-    if [[ -n "$existing_comment_id" ]]; then
-        gh api -X DELETE "repos/${REPOSITORY}/issues/comments/${existing_comment_id}" >/dev/null
-    fi
+    for id in ${MARKER_COMMENT_IDS[@]+"${MARKER_COMMENT_IDS[@]}"}; do
+        delete_comment "$id"
+    done
     exit 0
 fi
 
 comment_body="${COMMENT_MARKER}"$'\n'"${SUMMARY}"
-if [[ -n "$existing_comment_id" ]]; then
-    gh api -X PATCH "repos/${REPOSITORY}/issues/comments/${existing_comment_id}" -f body="$comment_body" >/dev/null
+if [[ ${#MARKER_COMMENT_IDS[@]} -gt 0 ]]; then
+    gh api -X PATCH "repos/${REPOSITORY}/issues/comments/${MARKER_COMMENT_IDS[0]}" -f body="$comment_body" >/dev/null
+    delete_duplicates
 else
     gh api -X POST "repos/${REPOSITORY}/issues/${PR_NUMBER}/comments" -f body="$comment_body" >/dev/null
+    load_marker_comment_ids
+    delete_duplicates
 fi
