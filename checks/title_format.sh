@@ -23,7 +23,7 @@ CUSTOM_PATTERN="${INPUT_TITLE_PATTERN:-}"
 # the captured type/scope against the allowed lists as plain strings. User
 # input never becomes part of a regex.
 matches_conventional() {
-    local pattern='^([^()!:[:space:]]+)(\(([^)]+)\))?(!)?: .+'
+    local pattern='^(?:(?:AB#\d+|#\d+)(?:: .+| .+)|[^()!:[:space:]]+(\([^)]+\))?(!)?: .+)$'
     if [[ ! "$TITLE" =~ $pattern ]]; then
         return 1
     fi
