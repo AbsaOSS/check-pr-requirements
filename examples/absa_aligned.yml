@@ -21,7 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check PR requirements
-        uses: AbsaOSS/check-pr-requirements@v0
+        # Pin to the full commit SHA of a release (see README "Versioning")
+        uses: AbsaOSS/check-pr-requirements@<commit-sha> # v0.x.y
         with:
           # PR data defaults to the pull_request event; pass inputs only to override
 
