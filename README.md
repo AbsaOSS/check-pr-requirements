@@ -126,6 +126,16 @@ Boolean inputs accept `true`/`false` in any letter case. Invalid configuration (
 
 `skip-labels` lets anyone who can label PRs (triage access or higher) bypass **every** check. Use a dedicated label that is not applied by automation, and rely on branch protection reviews for PRs that carry it. `skip-actors` matches the PR author login, so wire `pr-author` to `github.event.pull_request.user.login`, not `github.actor` (the user who triggered the run).
 
+### PR comment and concurrent runs
+
+With `comment-on-failure`, the action looks up its comment by a hidden marker and then creates or updates it. Two runs for the same PR (e.g. a push right after a label change) can both miss the lookup and post a comment each; the action then keeps the oldest marker comment and deletes the others. To avoid the overlap altogether, let only the latest run per PR proceed:
+
+```yaml
+concurrency:
+  group: check-pr-requirements-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+```
+
 ## Adding a New Check
 
 1. Create `checks/my_check.sh` — sources `lib.sh`, reads `INPUT_*` env vars, prints `pass`, `fail: reason` (exit 1) or, via `config_error`, `config error: reason` for invalid configuration (exit 2; reported as an error even when listed in `warn-checks`); exits 0 on pass

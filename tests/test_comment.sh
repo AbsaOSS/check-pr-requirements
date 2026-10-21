@@ -48,6 +48,12 @@ run_comment_case "failure with comment updates it" fail "42" \
 run_comment_case "pass with comment deletes it" pass "42" \
     "api -X DELETE repos/org/repo/issues/comments/42"
 run_comment_case "pass without comment only looks it up" pass "" ""
+run_comment_case "failure with duplicate comments updates the oldest" fail $'42\n43' \
+    "api -X PATCH repos/org/repo/issues/comments/42"
+run_comment_case "failure with duplicate comments deletes the newer one" fail $'42\n43' \
+    "api -X DELETE repos/org/repo/issues/comments/43"
+run_comment_case "pass with duplicate comments deletes all of them" pass $'42\n43' \
+    "api -X DELETE repos/org/repo/issues/comments/43"
 
 rm -rf "$STUB_DIR"
 print_results "comment" || exit 1
