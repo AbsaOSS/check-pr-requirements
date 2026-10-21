@@ -502,4 +502,28 @@ run_summary_case "failed-checks lists failed check ids" failed_checks_listed \
 run_summary_case "summary output carries the markdown table" summary_output_has_table \
     INPUT_PR_TITLE='bad title' INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false
 
+# ── Action toggles ───────────────────────────────────────────────────────────
+
+run_orchestrator fail "invalid annotations value is a configuration error" \
+    "INPUT_PR_TITLE=feat: valid #1" "INPUT_ANNOTATIONS=yes" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
+run_orchestrator "contains:input 'comment-on-failure' must be true or false, got 'treu'" \
+    "invalid comment-on-failure value names the input" \
+    "INPUT_PR_TITLE=feat: valid #1" "INPUT_COMMENT_ON_FAILURE=treu" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
+comment_enabled_true()  { output_has comment-on-failure true "$@"; }
+comment_enabled_false() { output_has comment-on-failure false "$@"; }
+
+run_summary_case "comment-on-failure accepts any letter case" comment_enabled_true \
+    INPUT_PR_TITLE='feat: valid #1' INPUT_COMMENT_ON_FAILURE=TRUE \
+    INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false
+
+run_summary_case "invalid comment-on-failure disables the comment step" comment_enabled_false \
+    INPUT_PR_TITLE='feat: valid #1' INPUT_COMMENT_ON_FAILURE=treu \
+    INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false
+
 print_results "check_orchestrator" || exit 1

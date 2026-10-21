@@ -252,6 +252,7 @@ runs:
         INPUT_SKIP_ACTORS: ${{ inputs.skip-actors }}
         INPUT_SKIP_LABELS: ${{ inputs.skip-labels }}
         INPUT_ANNOTATIONS: ${{ inputs.annotations }}
+        INPUT_COMMENT_ON_FAILURE: ${{ inputs.comment-on-failure }}
         INPUT_TARGET_BRANCH: ${{ inputs.target-branch }}
         INPUT_FILES_CHANGED: ${{ inputs.files-changed }}
         INPUT_ADDITIONS: ${{ inputs.additions }}
@@ -290,7 +291,7 @@ runs:
       run: bash "$GITHUB_ACTION_PATH/check.sh"
 
     - name: Update PR comment
-      if: inputs.comment-on-failure == 'true' && steps.checks.outputs.skipped != 'true'
+      if: steps.checks.outputs.comment-on-failure == 'true' && steps.checks.outputs.skipped != 'true'
       continue-on-error: true
       shell: bash
       env:

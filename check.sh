@@ -19,6 +19,17 @@ set_output() {
     } >> "${GITHUB_OUTPUT:-/dev/null}"
 }
 
+# ── Action toggles ───────────────────────────────────────────────────────────
+# Booleans the action reads itself (not a check). Any value other than
+# true/false is reported as a configuration error further below.
+ANNOTATIONS="$(to_lower "${INPUT_ANNOTATIONS:-$DEFAULT_ANNOTATIONS}")"
+COMMENT_ON_FAILURE="$(to_lower "${INPUT_COMMENT_ON_FAILURE:-$DEFAULT_COMMENT_ON_FAILURE}")"
+
+# Value of the comment-on-failure step output: only an exact true enables it
+comment_enabled() {
+    if [[ "$COMMENT_ON_FAILURE" == "true" ]]; then echo "true"; else echo "false"; fi
+}
+
 # ── Bypass ────────────────────────────────────────────────────────────────────
 # Skip all checks when the PR author matches skip-actors, or the PR carries any
 # label in skip-labels. Intended for bot PRs (e.g. Dependabot) or manually
@@ -33,6 +44,7 @@ emit_skip() {
     printf '%s\n' "$skip_summary" >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
     set_output "summary" "$skip_summary"
     set_output "failed-checks" ""
+    set_output "comment-on-failure" "$(comment_enabled)"
     set_output "result" "pass"
     set_output "pass-count" "0"
     set_output "fail-count" "0"
@@ -160,6 +172,10 @@ remediation_for() {
             fi ;;
         "Warn Checks")
             echo "- **Warn Checks** — list only known check ids in \`warn-checks\`: ${KNOWN_IDS[*]}." ;;
+        "Annotations")
+            echo "- **Annotations** — set \`annotations\` to \`true\` or \`false\`." ;;
+        "Comment On Failure")
+            echo "- **Comment On Failure** — set \`comment-on-failure\` to \`true\` or \`false\`." ;;
         *)
             echo "- **$1** — see the check details above and the contributing guidelines." ;;
     esac
@@ -254,6 +270,15 @@ for warn_check in ${WARN_IDS[@]+"${WARN_IDS[@]}"}; do
         record_result "Warn Checks" "config-error" "config error: unknown check '${warn_check}' in input 'warn-checks'"
     fi
 done
+
+if [[ "$ANNOTATIONS" != "true" && "$ANNOTATIONS" != "false" ]]; then
+    record_result "Annotations" "config-error" \
+        "config error: input 'annotations' must be true or false, got '${INPUT_ANNOTATIONS}'"
+fi
+if [[ "$COMMENT_ON_FAILURE" != "true" && "$COMMENT_ON_FAILURE" != "false" ]]; then
+    record_result "Comment On Failure" "config-error" \
+        "config error: input 'comment-on-failure' must be true or false, got '${INPUT_COMMENT_ON_FAILURE}'"
+fi
 
 for idx in "${!REGISTRY[@]}"; do
     IFS='|' read -r env_var default display_name script_name <<< "${REGISTRY[$idx]}"
@@ -352,6 +377,7 @@ for i in "${!CHECK_NAMES[@]}"; do
     fi
 done
 set_output "failed-checks" "${failed_check_ids%,}"
+set_output "comment-on-failure" "$(comment_enabled)"
 set_output "summary" "$SUMMARY_MARKDOWN"
 
 # ── Annotations ──────────────────────────────────────────────────────────────
@@ -373,7 +399,7 @@ escape_command_property() {
     printf '%s' "$value"
 }
 
-if [[ "$(to_lower "${INPUT_ANNOTATIONS:-true}")" != "false" ]]; then
+if [[ "$ANNOTATIONS" != "false" ]]; then
     for i in "${!CHECK_NAMES[@]}"; do
         case "${CHECK_RESULTS[$i]}" in
             fail|error|config-error) command="error" ;;
