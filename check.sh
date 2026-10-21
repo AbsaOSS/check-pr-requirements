@@ -260,7 +260,8 @@ for idx in "${!REGISTRY[@]}"; do
     case "$(to_lower "$toggle")" in
         true) run_check "$display_name" "$script_name" "${KNOWN_IDS[$idx]}" ;;
         false) ;;
-        *) record_result "$display_name" "error"             "config error: input '$(input_name_of "$env_var")' must be true or false, got '${toggle}'" ;;
+        *) record_result "$display_name" "error" \
+            "config error: input '$(input_name_of "$env_var")' must be true or false, got '${toggle}'" ;;
     esac
 done
 
@@ -347,10 +348,8 @@ for i in "${!CHECK_NAMES[@]}"; do
             echo "  🟡 ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}"
             warn_msg="${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]#fail: }"
             warn_msg="${warn_msg//'%'/%25}"
-            warn_msg="${warn_msg//$'
-'/%0D}"
-            warn_msg="${warn_msg//$'
-'/%0A}"
+            warn_msg="${warn_msg//$'\r'/%0D}"
+            warn_msg="${warn_msg//$'\n'/%0A}"
             echo "::warning::${warn_msg}" ;;
         error|config-error) echo "  ⚠️ ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
         *) echo "  ❌ ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;

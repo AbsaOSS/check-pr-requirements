@@ -124,7 +124,7 @@ Boolean inputs accept `true`/`false` in any letter case. Invalid configuration (
 
 ## Adding a New Check
 
-1. Create `checks/my_check.sh` — sources `lib.sh`, reads `INPUT_*` env vars, prints `pass`, `fail: reason` (exit 1) or `error: reason` for invalid configuration (exit 2; reported as an error even when listed in `warn-checks`); exits 0 on pass
+1. Create `checks/my_check.sh` — sources `lib.sh`, reads `INPUT_*` env vars, prints `pass`, `fail: reason` (exit 1) or, via `config_error`, `config error: reason` for invalid configuration (exit 2; reported as an error even when listed in `warn-checks`); exits 0 on pass
 2. Add entry to `REGISTRY` array and a "How to fix" tip to `remediation_for` in `check.sh`
 3. Add inputs to `action.yml` (toggle + config) and their env mapping in the composite step
 4. Put non-trivial config defaults in `checks/defaults.sh` (`tests/test_defaults.sh` checks they match `action.yml`)
