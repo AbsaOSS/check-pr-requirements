@@ -26,7 +26,7 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
+  pull-requests: write # PR comment on failure (comment-on-failure)
 
 jobs:
   check-pr:
@@ -71,7 +71,7 @@ PR data is read from the `pull_request` event by default, so these inputs are on
 | `additions` | `github.event.pull_request.additions` | Lines added (used with `max-lines-changed`) |
 | `deletions` | `github.event.pull_request.deletions` | Lines deleted (used with `max-lines-changed`) |
 | `labels` | PR label names joined with `,` | Comma-separated list of PR labels |
-| `github-token` | `github.token` | GitHub token (used by the release notes check) |
+| `github-token` | `github.token` | GitHub token (used by the release notes check and `comment-on-failure`) |
 
 A check whose PR data is empty fails with a message naming the missing input.
 
@@ -97,6 +97,8 @@ A check whose PR data is empty fails with a message naming the missing input.
 | `max-lines-changed` | *(empty = no limit)* | Maximum changed lines (additions + deletions); the size check fails if either limit is exceeded |
 | `required-labels` | *(empty = any label)* | Required label names, matched ignoring case, e.g. `bug,enhancement` |
 | `allowed-target-branches` | `main,master` | Allowed target branches; glob patterns supported (`main,support/*`) |
+| `annotations` | `true` | Emit an error (or warning) annotation per failed check, shown on the PR's Checks tab |
+| `comment-on-failure` | `true` | Keep one PR comment with the summary and "How to fix" while checks fail; delete it once they pass or are bypassed by `skip-actors`/`skip-labels`. Requires `pull-requests: write` and the `gh` CLI (preinstalled on GitHub-hosted runners); on fork PRs the `pull_request` token is read-only, so the comment is skipped. A failure to comment never fails the job; set `false` to opt out |
 | `skip-actors` | *(empty = no bypass)* | Comma-separated PR-author logins (ignoring case) that bypass **all** checks (needs `pr-author` wired), e.g. `dependabot[bot]` |
 | `skip-labels` | *(empty = no bypass)* | Comma-separated PR labels (ignoring case) that bypass **all** checks (needs `labels` wired), e.g. `skip-checks,automated` |
 | `warn-checks` | *(empty = all blocking)* | Comma-separated check ids whose failed results are warnings, e.g. `pr-size,label` |
@@ -115,12 +117,24 @@ Boolean inputs accept `true`/`false` in any letter case. Invalid configuration (
 | `fail-count` | Number of checks failed (excludes action configuration errors such as unknown `warn-checks` ids, which still set `result` to `fail`) |
 | `warn-count` | Number of checks reported as warnings |
 | `total-count` | Total checks executed |
+| `failed-checks` | Comma-separated ids of failed checks, e.g. `title,pr-size` |
+| `summary` | Markdown summary (the same text as the job summary) |
 | `skipped` | `true` when all checks were bypassed by `skip-actors` or `skip-labels` |
 | `skip-reason` | Why the checks were bypassed, e.g. `author dependabot[bot] matched skip-actors` |
 
 ### Bypass trust model
 
 `skip-labels` lets anyone who can label PRs (triage access or higher) bypass **every** check. Use a dedicated label that is not applied by automation, and rely on branch protection reviews for PRs that carry it. `skip-actors` matches the PR author login, so wire `pr-author` to `github.event.pull_request.user.login`, not `github.actor` (the user who triggered the run).
+
+### PR comment and concurrent runs
+
+With `comment-on-failure`, the action looks up its comment by a hidden marker and then creates or updates it. Two runs for the same PR (e.g. a push right after a label change) can both miss the lookup and post a comment each; the action then keeps the oldest marker comment and deletes the others. To avoid the overlap altogether, let only the latest run per PR proceed:
+
+```yaml
+concurrency:
+  group: check-pr-requirements-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+```
 
 ## Adding a New Check
 

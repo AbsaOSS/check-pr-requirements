@@ -19,6 +19,17 @@ set_output() {
     } >> "${GITHUB_OUTPUT:-/dev/null}"
 }
 
+# ── Action toggles ───────────────────────────────────────────────────────────
+# Booleans the action reads itself (not a check). Any value other than
+# true/false is reported as a configuration error further below.
+ANNOTATIONS="$(to_lower "${INPUT_ANNOTATIONS:-$DEFAULT_ANNOTATIONS}")"
+COMMENT_ON_FAILURE="$(to_lower "${INPUT_COMMENT_ON_FAILURE:-$DEFAULT_COMMENT_ON_FAILURE}")"
+
+# Value of the comment-on-failure step output: only an exact true enables it
+comment_enabled() {
+    if [[ "$COMMENT_ON_FAILURE" == "true" ]]; then echo "true"; else echo "false"; fi
+}
+
 # ── Bypass ────────────────────────────────────────────────────────────────────
 # Skip all checks when the PR author matches skip-actors, or the PR carries any
 # label in skip-labels. Intended for bot PRs (e.g. Dependabot) or manually
@@ -27,13 +38,13 @@ inert() { printf '%s' "$1" | tr '\n' ' ' | tr -d '`'; }
 
 emit_skip() {
     local subject="$1" value="$2" input_name="$3"
-    local value_text
+    local value_text skip_summary
     value_text="$(inert "$value")"
-    {
-        echo "## PR Requirements Check"
-        echo ""
-        echo "Checks skipped: ${subject} \`${value_text}\` matched \`${input_name}\`."
-    } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+    skip_summary="## PR Requirements Check"$'\n\n'"Checks skipped: ${subject} \`${value_text}\` matched \`${input_name}\`."
+    printf '%s\n' "$skip_summary" >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+    set_output "summary" "$skip_summary"
+    set_output "failed-checks" ""
+    set_output "comment-on-failure" "$(comment_enabled)"
     set_output "result" "pass"
     set_output "pass-count" "0"
     set_output "fail-count" "0"
@@ -161,6 +172,10 @@ remediation_for() {
             fi ;;
         "Warn Checks")
             echo "- **Warn Checks** — list only known check ids in \`warn-checks\`: ${KNOWN_IDS[*]}." ;;
+        "Annotations")
+            echo "- **Annotations** — set \`annotations\` to \`true\` or \`false\`." ;;
+        "Comment On Failure")
+            echo "- **Comment On Failure** — set \`comment-on-failure\` to \`true\` or \`false\`." ;;
         *)
             echo "- **$1** — see the check details above and the contributing guidelines." ;;
     esac
@@ -170,6 +185,7 @@ remediation_for() {
 declare -a CHECK_NAMES=()
 declare -a CHECK_RESULTS=()
 declare -a CHECK_MESSAGES=()
+declare -a CHECK_IDS=()
 FAIL_COUNT=0
 PASS_COUNT=0
 WARN_COUNT=0
@@ -206,7 +222,8 @@ done
 # warn-checks), error (invalid check configuration) or config-error (invalid
 # action-level configuration, kept out of the counts)
 record_result() {
-    local name="$1" result="$2" message="$3"
+    local name="$1" result="$2" message="$3" check_id="${4:-}"
+    CHECK_IDS+=("$check_id")
     CHECK_NAMES+=("$name")
     CHECK_RESULTS+=("$result")
     CHECK_MESSAGES+=("$message")
@@ -223,7 +240,7 @@ run_check() {
     local script="${CHECKS_DIR}/$2"
 
     if [[ ! -f "$script" ]]; then
-        record_result "$name" "error" "check script not found: $script"
+        record_result "$name" "error" "check script not found: $script" "$check_id"
         return
     fi
 
@@ -233,13 +250,13 @@ run_check() {
 
     # Exit 2 is a configuration error: never downgraded to a warning
     if [[ "$exit_code" -eq 0 ]]; then
-        record_result "$name" "pass" "$output"
+        record_result "$name" "pass" "$output" "$check_id"
     elif [[ "$exit_code" -eq "$CONFIG_ERROR_EXIT" ]]; then
-        record_result "$name" "error" "$output"
+        record_result "$name" "error" "$output" "$check_id"
     elif contains "$check_id" ${WARN_IDS[@]+"${WARN_IDS[@]}"}; then
-        record_result "$name" "warn" "$output"
+        record_result "$name" "warn" "$output" "$check_id"
     else
-        record_result "$name" "fail" "$output"
+        record_result "$name" "fail" "$output" "$check_id"
     fi
 }
 
@@ -254,6 +271,15 @@ for warn_check in ${WARN_IDS[@]+"${WARN_IDS[@]}"}; do
     fi
 done
 
+if [[ "$ANNOTATIONS" != "true" && "$ANNOTATIONS" != "false" ]]; then
+    record_result "Annotations" "config-error" \
+        "config error: input 'annotations' must be true or false, got '${INPUT_ANNOTATIONS}'"
+fi
+if [[ "$COMMENT_ON_FAILURE" != "true" && "$COMMENT_ON_FAILURE" != "false" ]]; then
+    record_result "Comment On Failure" "config-error" \
+        "config error: input 'comment-on-failure' must be true or false, got '${INPUT_COMMENT_ON_FAILURE}'"
+fi
+
 for idx in "${!REGISTRY[@]}"; do
     IFS='|' read -r env_var default display_name script_name <<< "${REGISTRY[$idx]}"
     toggle="${!env_var:-$default}"
@@ -261,7 +287,8 @@ for idx in "${!REGISTRY[@]}"; do
         true) run_check "$display_name" "$script_name" "${KNOWN_IDS[$idx]}" ;;
         false) ;;
         *) record_result "$display_name" "error" \
-            "config error: input '$(input_name_of "$env_var")' must be true or false, got '${toggle}'" ;;
+            "config error: input '$(input_name_of "$env_var")' must be true or false, got '${toggle}'" \
+            "${KNOWN_IDS[$idx]}" ;;
     esac
 done
 
@@ -277,7 +304,9 @@ if [[ "$CONFIG_ERROR_COUNT" -gt 0 ]]; then
     RESULT_EXTRA+=", ${CONFIG_ERROR_COUNT} configuration error(s)"
 fi
 
-{
+# A function rather than an inline $( { ... } ): bash 3.2 (macOS) cannot parse
+# case patterns inside command substitution.
+render_summary() {
     echo "## PR Requirements Check"
     echo ""
     echo "| Check | Status | Details |"
@@ -323,7 +352,10 @@ fi
             esac
         done
     fi
-} >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+}
+
+SUMMARY_MARKDOWN="$(render_summary)"
+printf '%s\n' "$SUMMARY_MARKDOWN" >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
 
 if [[ "$BLOCKING_COUNT" -eq 0 ]]; then
     RESULT="pass"
@@ -338,23 +370,61 @@ set_output "total-count" "$TOTAL"
 set_output "skipped" "false"
 set_output "skip-reason" ""
 
-# CLI output
+failed_check_ids=""
+for i in "${!CHECK_NAMES[@]}"; do
+    if [[ "${CHECK_RESULTS[$i]}" == "fail" || "${CHECK_RESULTS[$i]}" == "error" ]] && [[ -n "${CHECK_IDS[$i]}" ]]; then
+        failed_check_ids+="${CHECK_IDS[$i]},"
+    fi
+done
+set_output "failed-checks" "${failed_check_ids%,}"
+set_output "comment-on-failure" "$(comment_enabled)"
+set_output "summary" "$SUMMARY_MARKDOWN"
+
+# ── Annotations ──────────────────────────────────────────────────────────────
+# Shown in the PR checks UI. Values are escaped per the workflow command spec
+# so PR-controlled text cannot end the command early.
+escape_command_data() {
+    local value="$1"
+    value="${value//'%'/%25}"
+    value="${value//$'\r'/%0D}"
+    value="${value//$'\n'/%0A}"
+    printf '%s' "$value"
+}
+
+escape_command_property() {
+    local value
+    value="$(escape_command_data "$1")"
+    value="${value//:/%3A}"
+    value="${value//,/%2C}"
+    printf '%s' "$value"
+}
+
+if [[ "$ANNOTATIONS" != "false" ]]; then
+    for i in "${!CHECK_NAMES[@]}"; do
+        case "${CHECK_RESULTS[$i]}" in
+            fail|error|config-error) command="error" ;;
+            warn) command="warning" ;;
+            *) continue ;;
+        esac
+        echo "::${command} title=$(escape_command_property "${CHECK_NAMES[$i]}")::$(escape_command_data "${CHECK_MESSAGES[$i]#fail: }")"
+    done
+fi
+
+# ── CLI output ───────────────────────────────────────────────────────────────
+# Workflow commands are disabled while PR-controlled messages are printed.
+stop_commands_token="check-pr-requirements-${RANDOM}${RANDOM}${RANDOM}"
+echo "::stop-commands::${stop_commands_token}"
 echo ""
 echo "PR Requirements: ${PASS_COUNT}/${TOTAL} passed${RESULT_EXTRA}"
 for i in "${!CHECK_NAMES[@]}"; do
     case "${CHECK_RESULTS[$i]}" in
         pass) echo "  ✅ ${CHECK_NAMES[$i]}" ;;
-        warn)
-            echo "  🟡 ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}"
-            warn_msg="${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]#fail: }"
-            warn_msg="${warn_msg//'%'/%25}"
-            warn_msg="${warn_msg//$'\r'/%0D}"
-            warn_msg="${warn_msg//$'\n'/%0A}"
-            echo "::warning::${warn_msg}" ;;
+        warn) echo "  🟡 ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
         error|config-error) echo "  ⚠️ ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
         *) echo "  ❌ ${CHECK_NAMES[$i]}: ${CHECK_MESSAGES[$i]}" ;;
     esac
 done
+echo "::${stop_commands_token}::"
 
 if [[ "$BLOCKING_COUNT" -gt 0 ]]; then
     exit 1
