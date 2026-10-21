@@ -165,7 +165,7 @@ inputs:
     required: false
     default: "true"
   comment-on-failure:
-    description: "Keep one PR comment with the summary while checks fail and delete it once they pass (needs pull-requests: write)"
+    description: "Keep one PR comment with the summary while checks fail and delete it once they pass or are skipped (needs pull-requests: write)"
     required: false
     default: "false"
   skip-actors:
@@ -291,7 +291,8 @@ runs:
       run: bash "$GITHUB_ACTION_PATH/check.sh"
 
     - name: Update PR comment
-      if: steps.checks.outputs.comment-on-failure == 'true' && steps.checks.outputs.skipped != 'true'
+      # Also runs on bypassed runs (result=pass) so a stale failure comment is removed
+      if: steps.checks.outputs.comment-on-failure == 'true'
       continue-on-error: true
       shell: bash
       env:

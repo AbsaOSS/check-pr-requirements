@@ -98,7 +98,7 @@ A check whose PR data is empty fails with a message naming the missing input.
 | `required-labels` | *(empty = any label)* | Required label names, matched ignoring case, e.g. `bug,enhancement` |
 | `allowed-target-branches` | `main,master` | Allowed target branches; glob patterns supported (`main,support/*`) |
 | `annotations` | `true` | Emit an error (or warning) annotation per failed check, shown on the PR's Checks tab |
-| `comment-on-failure` | `false` | Keep one PR comment with the summary and "How to fix" while checks fail; delete it once they pass. Requires `pull-requests: write` and the `gh` CLI (preinstalled on GitHub-hosted runners); on fork PRs the `pull_request` token is read-only, so the comment is skipped |
+| `comment-on-failure` | `false` | Keep one PR comment with the summary and "How to fix" while checks fail; delete it once they pass or are bypassed by `skip-actors`/`skip-labels`. Requires `pull-requests: write` and the `gh` CLI (preinstalled on GitHub-hosted runners); on fork PRs the `pull_request` token is read-only, so the comment is skipped |
 | `skip-actors` | *(empty = no bypass)* | Comma-separated PR-author logins (ignoring case) that bypass **all** checks (needs `pr-author` wired), e.g. `dependabot[bot]` |
 | `skip-labels` | *(empty = no bypass)* | Comma-separated PR labels (ignoring case) that bypass **all** checks (needs `labels` wired), e.g. `skip-checks,automated` |
 | `warn-checks` | *(empty = all blocking)* | Comma-separated check ids whose failed results are warnings, e.g. `pr-size,label` |
