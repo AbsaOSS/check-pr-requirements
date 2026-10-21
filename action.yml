@@ -165,9 +165,9 @@ inputs:
     required: false
     default: "true"
   comment-on-failure:
-    description: "Keep one PR comment with the summary while checks fail and delete it once they pass or are skipped (needs pull-requests: write)"
+    description: "Keep one PR comment with the summary while checks fail and delete it once they pass or are skipped (needs pull-requests: write; set false to opt out)"
     required: false
-    default: "false"
+    default: "true"
   skip-actors:
     description: "Comma-separated PR-author logins that bypass all checks (e.g. bots). Empty = no bypass."
     required: false
