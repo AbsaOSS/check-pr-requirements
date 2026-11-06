@@ -39,7 +39,10 @@ if [[ -n "$REQUIRED_SECTIONS" ]]; then
     split_csv "$REQUIRED_SECTIONS"
     MISSING_SECTIONS=()
     for section in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
-        if ! printf '%s\n' "$BODY" | grep -qF "$section"; then
+        # A here-string, not `printf | grep -q`: grep -q exits on the first
+        # match, and under pipefail the writer's SIGPIPE on a body larger than
+        # the pipe buffer would turn that match into a failure.
+        if ! grep -qF "$section" <<< "$BODY"; then
             MISSING_SECTIONS+=("$section")
         fi
     done

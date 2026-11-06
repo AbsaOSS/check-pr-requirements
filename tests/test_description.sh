@@ -78,6 +78,13 @@ INPUT_DESCRIPTION_REQUIRED_SECTIONS="" \
 INPUT_PR_BODY="Long enough body without any sections at all" \
     assert_pass "no sections required" "$CHECK"
 
+# A body bigger than a pipe buffer, with the section near the top: grep finds
+# it and exits before the whole body is written to it.
+INPUT_DESCRIPTION_MIN_LENGTH="" \
+INPUT_DESCRIPTION_REQUIRED_SECTIONS="## Overview" \
+INPUT_PR_BODY="$(printf '## Overview\n%s' "$(head -c 200000 /dev/zero | tr '\0' 'x')")" \
+    assert_pass "large body: required section near the top" "$CHECK"
+
 INPUT_PR_BODY="Long enough description body" INPUT_DESCRIPTION_MIN_LENGTH="abc" \
     assert_config_error "non-numeric min length" "$CHECK"
 

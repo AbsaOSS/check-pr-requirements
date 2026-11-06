@@ -21,7 +21,10 @@ REF_PATTERN="(AB)?#[0-9]+"
 URL_PATTERN="https?://github\.com/[^/]+/[^/]+/issues/[0-9]+"
 KEYWORD_PATTERN="${KEYWORDS}[[:space:]]+(${REF_PATTERN}|${URL_PATTERN})"
 
-if printf '%s\n' "$COMBINED" | grep -qiE "$KEYWORD_PATTERN"; then
+# Here-strings, not `printf | grep -q`: grep -q exits on the first match, and
+# under pipefail the writer's SIGPIPE on a body larger than the pipe buffer
+# would turn that match into a failure.
+if grep -qiE "$KEYWORD_PATTERN" <<< "$COMBINED"; then
     echo "pass"
     exit 0
 fi
@@ -31,12 +34,12 @@ if [[ "$REQUIRE_KEYWORD" == "true" ]]; then
     exit 1
 fi
 
-if printf '%s\n' "$COMBINED" | grep -qiE "$REF_PATTERN"; then
+if grep -qiE "$REF_PATTERN" <<< "$COMBINED"; then
     echo "pass"
     exit 0
 fi
 
-if printf '%s\n' "$COMBINED" | grep -qE "$URL_PATTERN"; then
+if grep -qE "$URL_PATTERN" <<< "$COMBINED"; then
     echo "pass"
     exit 0
 fi
