@@ -144,6 +144,9 @@ INPUT_PR_TITLE="feat: add login" INPUT_TITLE_MAX_LENGTH="15" \
 INPUT_PR_TITLE="feat: add login" INPUT_TITLE_MAX_LENGTH="x" \
     assert_output_contains "non-numeric max length is a config error" "$CHECK" "config error: input 'title-max-length'"
 
+INPUT_PR_TITLE="feat: a title that is far too long" INPUT_TITLE_FORMATS="bogus" INPUT_TITLE_MAX_LENGTH="0" \
+    assert_config_error "invalid format is reported even when the title is too long" "$CHECK"
+
 # ── Specific failure reasons ─────────────────────────────────────────────────
 
 INPUT_PR_TITLE="Feat: add login" \

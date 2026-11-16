@@ -211,10 +211,21 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: Detect bypass
+      id: bypass
+      if: inputs.check-release-notes == 'true'
+      shell: bash
+      env:
+        INPUT_PR_AUTHOR: ${{ inputs.pr-author }}
+        INPUT_SKIP_ACTORS: ${{ inputs.skip-actors }}
+        INPUT_SKIP_LABELS: ${{ inputs.skip-labels }}
+        INPUT_LABELS: ${{ inputs.labels }}
+      run: bash "${{ github.action_path }}/check.sh" --detect-bypass
+
     # Runs before check.sh, which reports its outcome in the shared summary
     - name: Check release notes
       id: release-notes
-      if: inputs.check-release-notes == 'true'
+      if: inputs.check-release-notes == 'true' && steps.bypass.outputs.bypassed != 'true'
       continue-on-error: true
       uses: AbsaOSS/release-notes-presence-check@8e586b26a5e27f899ee8590a5d988fd4780a3dbf # v0.4.0
       env:

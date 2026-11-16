@@ -360,6 +360,12 @@ run_orchestrator fail "config error in warned check still fails" \
     "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
     "${DEFAULTS[@]}"
 
+run_orchestrator fail "config error behind an overlength warned title still fails" \
+    "INPUT_PR_TITLE=feat: a title that is far too long" "INPUT_WARN_CHECKS=title" \
+    "INPUT_TITLE_FORMATS=bogus" "INPUT_TITLE_MAX_LENGTH=0" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
 run_orchestrator "contains:⚠️ PR Title" "config error in warned check reported as error" \
     "INPUT_PR_TITLE=feat: valid #1" "INPUT_WARN_CHECKS=title" \
     "INPUT_TITLE_FORMATS=custom" "INPUT_TITLE_PATTERN=" \
@@ -413,6 +419,36 @@ run_summary_case "actor bypass sets skip-reason" skip_reason_actor \
 
 run_summary_case "label bypass sets skip-reason" skip_reason_label \
     INPUT_PR_TITLE='Bump x' INPUT_LABELS='bug,skip-checks' INPUT_SKIP_LABELS='skip-checks'
+
+run_detect_bypass_case() {
+    local description="$1" expected="$2"
+    shift 2
+
+    ((TESTS_TOTAL++))
+    local output_file
+    output_file="$(mktemp)"
+
+    env -i PATH="$PATH" HOME="$HOME" GITHUB_OUTPUT="$output_file" "$@" \
+        bash "$CHECK" --detect-bypass >/dev/null 2>&1
+
+    if grep -A1 -E '^bypassed<<' "$output_file" | grep -qxF "$expected"; then
+        echo "  ✅ ${description}"
+        ((TESTS_PASSED++))
+    else
+        echo "  ❌ ${description}"
+        ((TESTS_FAILED++))
+    fi
+    rm -f "$output_file"
+}
+
+run_detect_bypass_case "detect-bypass reports matching actor" true \
+    INPUT_PR_AUTHOR='dependabot[bot]' INPUT_SKIP_ACTORS='dependabot[bot]'
+
+run_detect_bypass_case "detect-bypass reports matching label" true \
+    INPUT_LABELS='bug,skip-checks' INPUT_SKIP_LABELS='skip-checks'
+
+run_detect_bypass_case "detect-bypass reports no bypass" false \
+    INPUT_PR_AUTHOR='alice' INPUT_SKIP_ACTORS='dependabot[bot]'
 
 run_summary_case "normal run sets skipped=false" skipped_false \
     INPUT_PR_TITLE='feat: add login #1' INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false

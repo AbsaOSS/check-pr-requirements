@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   unit-tests:
@@ -193,5 +194,46 @@ jobs:
         run: |
           if [[ "$PASS_COUNT" != "1" || "$FAIL_COUNT" != "1" ]]; then
             echo "Expected 1 pass (target-branch) and 1 fail (pr-size), got pass=$PASS_COUNT fail=$FAIL_COUNT"
+            exit 1
+          fi
+
+  integration-test-release-notes:
+    name: Integration - Release Notes
+    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run with a release notes heading the PR body contains
+        id: present
+        uses: ./
+        continue-on-error: true
+        with:
+          check-title: "false"
+          check-description: "false"
+          check-issue-reference: "false"
+          check-release-notes: "true"
+          release-notes-skip-labels: ""
+
+      - name: Run with a release notes heading the PR body lacks
+        id: missing
+        uses: ./
+        continue-on-error: true
+        with:
+          check-title: "false"
+          check-description: "false"
+          check-issue-reference: "false"
+          check-release-notes: "true"
+          release-notes-tag: "## Heading That Is Not In The PR Body"
+          release-notes-skip-labels: ""
+
+      - name: Verify the release notes result is reflected in the action output
+        env:
+          PRESENT_RESULT: ${{ steps.present.outputs.result }}
+          MISSING_RESULT: ${{ steps.missing.outputs.result }}
+        run: |
+          if [[ "$PRESENT_RESULT" != "pass" || "$MISSING_RESULT" != "fail" ]]; then
+            echo "Expected present=pass and missing=fail, got present=$PRESENT_RESULT missing=$MISSING_RESULT"
             exit 1
           fi

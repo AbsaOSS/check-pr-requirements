@@ -46,21 +46,39 @@ emit_skip() {
     exit 0
 }
 
-PR_AUTHOR="${INPUT_PR_AUTHOR:-}"
-SKIP_ACTORS="${INPUT_SKIP_ACTORS:-}"
-if [[ -n "$PR_AUTHOR" ]] && csv_contains_ignore_case "$PR_AUTHOR" "$SKIP_ACTORS"; then
-    emit_skip "author" "$PR_AUTHOR" "skip-actors"
+# Sets BYPASS_SUBJECT, BYPASS_VALUE and BYPASS_INPUT when the PR is bypassed
+find_bypass() {
+    local pr_author="${INPUT_PR_AUTHOR:-}"
+    if [[ -n "$pr_author" ]] && csv_contains_ignore_case "$pr_author" "${INPUT_SKIP_ACTORS:-}"; then
+        BYPASS_SUBJECT="author" BYPASS_VALUE="$pr_author" BYPASS_INPUT="skip-actors"
+        return 0
+    fi
+
+    local pr_labels="${INPUT_LABELS:-}" skip_label
+    split_csv "${INPUT_SKIP_LABELS:-}"
+    local skip_label_list=(${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"})
+    for skip_label in ${skip_label_list[@]+"${skip_label_list[@]}"}; do
+        if csv_contains_ignore_case "$skip_label" "$pr_labels"; then
+            BYPASS_SUBJECT="label" BYPASS_VALUE="$skip_label" BYPASS_INPUT="skip-labels"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Lets the action skip steps that run before this script when a bypass applies
+if [[ "${1:-}" == "--detect-bypass" ]]; then
+    if find_bypass; then
+        set_output "bypassed" "true"
+    else
+        set_output "bypassed" "false"
+    fi
+    exit 0
 fi
 
-PR_LABELS="${INPUT_LABELS:-}"
-SKIP_LABELS="${INPUT_SKIP_LABELS:-}"
-split_csv "$SKIP_LABELS"
-skip_label_list=(${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"})
-for skip_label in ${skip_label_list[@]+"${skip_label_list[@]}"}; do
-    if csv_contains_ignore_case "$skip_label" "$PR_LABELS"; then
-        emit_skip "label" "$skip_label" "skip-labels"
-    fi
-done
+if find_bypass; then
+    emit_skip "$BYPASS_SUBJECT" "$BYPASS_VALUE" "$BYPASS_INPUT"
+fi
 
 # ── Check Registry ──────────────────────────────────────────────────────────
 # Format: "env_toggle|default|display_name|script_name"

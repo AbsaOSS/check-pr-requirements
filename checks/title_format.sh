@@ -27,14 +27,6 @@ MAX_LENGTH="${INPUT_TITLE_MAX_LENGTH:-}"
 # Why the title is not a valid conventional title, shown when no format matches
 CONVENTIONAL_MISMATCH=""
 
-if [[ -n "$MAX_LENGTH" ]]; then
-    require_whole_number "$MAX_LENGTH" "title-max-length"
-    if [[ ${#TITLE} -gt "$MAX_LENGTH" ]]; then
-        echo "fail: title is ${#TITLE} characters (maximum $MAX_LENGTH)"
-        exit 1
-    fi
-fi
-
 # Conventional commits: parse the title once with a fixed pattern, then compare
 # the captured type/scope against the allowed lists as plain strings. User
 # input never becomes part of a regex.
@@ -103,6 +95,10 @@ if [[ ${#FORMAT_LIST[@]} -eq 0 ]]; then
     config_error "input 'title-formats' is empty"
 fi
 
+if [[ -n "$MAX_LENGTH" ]]; then
+    require_whole_number "$MAX_LENGTH" "title-max-length"
+fi
+
 # Validate the whole config up front so a format that matches early cannot
 # mask a misconfigured one later in the list.
 for format in "${FORMAT_LIST[@]}"; do
@@ -119,6 +115,15 @@ for format in "${FORMAT_LIST[@]}"; do
             ;;
     esac
 done
+
+# Length is checked only after the config is validated, so a configuration
+# error cannot be hidden behind a plain failure that warn-checks downgrades.
+if [[ -n "$MAX_LENGTH" ]]; then
+    if [[ ${#TITLE} -gt "$MAX_LENGTH" ]]; then
+        echo "fail: title is ${#TITLE} characters (maximum $MAX_LENGTH)"
+        exit 1
+    fi
+fi
 
 for format in "${FORMAT_LIST[@]}"; do
     case "$format" in
