@@ -30,8 +30,11 @@ ISSUE_URL="https?://github\.com/[^/]+/[^/]+/issues/[0-9]+"
 KEYWORD_PATTERN="${WORD_START}${KEYWORDS}[[:space:]]+(${REF}|${ISSUE_URL})${REF_END}"
 BARE_REF_PATTERN="${REF_START}${REF}${REF_END}"
 
+# Here-string, not `printf | grep -q`: grep -q exits on the first match, and
+# under pipefail the writer's SIGPIPE on a body larger than the pipe buffer
+# would turn that match into a failure.
 contains() {
-    printf '%s\n' "$1" | grep -qiE "$2"
+    grep -qiE "$2" <<< "$1"
 }
 
 if contains "$BODY" "$KEYWORD_PATTERN"; then

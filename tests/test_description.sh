@@ -121,4 +121,12 @@ INPUT_PR_BODY=$'Real text before <!-- unclosed comment hides the rest' INPUT_DES
 INPUT_DESCRIPTION_MIN_LENGTH="10" \
     assert_pass "unclosed comment hides only what follows it" "$CHECK"
 
+# A body bigger than a pipe buffer, with the section near the top: grep finds
+# it and exits before the whole body is written to it. 130 KB clears grep's read
+# buffer but stays under Linux's 128 KiB cap on one env string (MAX_ARG_STRLEN).
+INPUT_DESCRIPTION_MIN_LENGTH="" \
+INPUT_DESCRIPTION_REQUIRED_SECTIONS="## Overview" \
+INPUT_PR_BODY="$(printf '## Overview\n%s' "$(head -c 130000 /dev/zero | tr '\0' 'x')")" \
+    assert_pass "large body: required section near the top" "$CHECK"
+
 print_results "description" || exit 1

@@ -99,7 +99,10 @@ if [[ -n "$REQUIRED_SECTIONS" ]]; then
     MISSING_SECTIONS=()
     EMPTY_SECTIONS=()
     for section in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
-        if ! printf '%s\n' "$BODY" | grep -qF "$section"; then
+        # A here-string, not `printf | grep -q`: grep -q exits on the first
+        # match, and under pipefail the writer's SIGPIPE on a body larger than
+        # the pipe buffer would turn that match into a failure.
+        if ! grep -qF "$section" <<< "$BODY"; then
             MISSING_SECTIONS+=("$section")
         elif is_true "$REQUIRE_SECTION_CONTENT" "description-require-section-content" \
             && ! section_has_content "$section"; then
