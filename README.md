@@ -146,7 +146,7 @@ concurrency:
 
 ## Releasing
 
-Push a semantic version tag (e.g. `git tag v0.4.0 && git push origin v0.4.0`). The `Release` workflow uses [AbsaOSS/generate-release-notes](https://github.com/AbsaOSS/generate-release-notes) to build categorized release notes from closed issues and PRs (the `## Release Notes` section of each PR) and publishes them as the GitHub Release for that tag.
+Run "Draft release" workflow to create a draft release. Review the proposed description and publish it.
 
 ## License
 
