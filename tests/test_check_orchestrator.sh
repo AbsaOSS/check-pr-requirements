@@ -145,6 +145,20 @@ run_orchestrator fail "empty skip-labels disables label bypass" \
     "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=true" "INPUT_CHECK_ISSUE_REFERENCE=true" \
     "${DEFAULTS[@]}"
 
+run_orchestrator pass "skip-actors matches author ignoring case" \
+    "INPUT_PR_TITLE=Bump actions/checkout from 3 to 4" \
+    "INPUT_PR_BODY=" \
+    "INPUT_PR_AUTHOR=Dependabot[bot]" "INPUT_SKIP_ACTORS=dependabot[bot]" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=true" "INPUT_CHECK_ISSUE_REFERENCE=true" \
+    "${DEFAULTS[@]}"
+
+run_orchestrator pass "skip-labels matches label ignoring case" \
+    "INPUT_PR_TITLE=Bump actions/checkout from 3 to 4" \
+    "INPUT_PR_BODY=" \
+    "INPUT_LABELS=Skip-Checks" "INPUT_SKIP_LABELS=skip-checks" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=true" "INPUT_CHECK_ISSUE_REFERENCE=true" \
+    "${DEFAULTS[@]}"
+
 # ── Summary / output sanitization ───────────────────────────────────────────
 
 run_sanitization_case() {
@@ -346,6 +360,12 @@ run_orchestrator fail "config error in warned check still fails" \
     "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
     "${DEFAULTS[@]}"
 
+run_orchestrator fail "config error behind an overlength warned title still fails" \
+    "INPUT_PR_TITLE=feat: a title that is far too long" "INPUT_WARN_CHECKS=title" \
+    "INPUT_TITLE_FORMATS=bogus" "INPUT_TITLE_MAX_LENGTH=0" \
+    "INPUT_CHECK_TITLE=true" "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
 run_orchestrator "contains:⚠️ PR Title" "config error in warned check reported as error" \
     "INPUT_PR_TITLE=feat: valid #1" "INPUT_WARN_CHECKS=title" \
     "INPUT_TITLE_FORMATS=custom" "INPUT_TITLE_PATTERN=" \
@@ -379,4 +399,92 @@ run_summary_case "result line mentions warnings" result_mentions_warnings \
     INPUT_CHECK_ISSUE_REFERENCE=false INPUT_CHECK_BRANCH_NAME=false \
     INPUT_CHECK_PR_SIZE=false INPUT_CHECK_LABEL=false INPUT_CHECK_TARGET_BRANCH=false
 
-print_results "check_orchestrator"|| exit 1
+# ── Bypass outputs ───────────────────────────────────────────────────────────
+
+# Predicates receive (summary_file, output_file) from run_summary_case
+output_has() {
+    local name="$1" expected_value="$2" output_file="$4"
+    grep -A1 -E "^${name}<<" "$output_file" | grep -qxF "$expected_value"
+}
+skipped_true()      { output_has skipped true "$@"; }
+skipped_false()     { output_has skipped false "$@"; }
+skip_reason_actor() { output_has skip-reason 'author dependabot[bot] matched skip-actors' "$@"; }
+skip_reason_label() { output_has skip-reason 'label skip-checks matched skip-labels' "$@"; }
+
+run_summary_case "bypassed run sets skipped=true" skipped_true \
+    INPUT_PR_TITLE='Bump x' INPUT_PR_AUTHOR='dependabot[bot]' INPUT_SKIP_ACTORS='dependabot[bot]'
+
+run_summary_case "actor bypass sets skip-reason" skip_reason_actor \
+    INPUT_PR_TITLE='Bump x' INPUT_PR_AUTHOR='dependabot[bot]' INPUT_SKIP_ACTORS='dependabot[bot]'
+
+run_summary_case "label bypass sets skip-reason" skip_reason_label \
+    INPUT_PR_TITLE='Bump x' INPUT_LABELS='bug,skip-checks' INPUT_SKIP_LABELS='skip-checks'
+
+run_detect_bypass_case() {
+    local description="$1" expected="$2"
+    shift 2
+
+    ((TESTS_TOTAL++))
+    local output_file
+    output_file="$(mktemp)"
+
+    env -i PATH="$PATH" HOME="$HOME" GITHUB_OUTPUT="$output_file" "$@" \
+        bash "$CHECK" --detect-bypass >/dev/null 2>&1
+
+    if grep -A1 -E '^bypassed<<' "$output_file" | grep -qxF "$expected"; then
+        echo "  ✅ ${description}"
+        ((TESTS_PASSED++))
+    else
+        echo "  ❌ ${description}"
+        ((TESTS_FAILED++))
+    fi
+    rm -f "$output_file"
+}
+
+run_detect_bypass_case "detect-bypass reports matching actor" true \
+    INPUT_PR_AUTHOR='dependabot[bot]' INPUT_SKIP_ACTORS='dependabot[bot]'
+
+run_detect_bypass_case "detect-bypass reports matching label" true \
+    INPUT_LABELS='bug,skip-checks' INPUT_SKIP_LABELS='skip-checks'
+
+run_detect_bypass_case "detect-bypass reports no bypass" false \
+    INPUT_PR_AUTHOR='alice' INPUT_SKIP_ACTORS='dependabot[bot]'
+
+run_summary_case "normal run sets skipped=false" skipped_false \
+    INPUT_PR_TITLE='feat: add login #1' INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false
+
+# ── Configuration errors ─────────────────────────────────────────────────────
+
+has_error_row() { grep -qF '| ⚠️ Error | `config error: input' "$1"; }
+has_config_tip() { grep -qF 'action configuration in the workflow file is invalid' "$1"; }
+
+run_orchestrator fail "toggle accepts upper-case True and runs the check" \
+    "INPUT_PR_TITLE=bad title" "INPUT_CHECK_TITLE=True" \
+    "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
+run_orchestrator "contains:input 'check-title' must be true or false" "non-boolean toggle is a config error" \
+    "INPUT_PR_TITLE=feat: ok" "INPUT_CHECK_TITLE=yes" \
+    "INPUT_CHECK_DESCRIPTION=false" "INPUT_CHECK_ISSUE_REFERENCE=false" \
+    "${DEFAULTS[@]}"
+
+run_summary_case "config error renders as Error row" has_error_row \
+    INPUT_PR_TITLE='feat: ok' INPUT_CHECK_TITLE=yes \
+    INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false
+
+run_summary_case "config error gets configuration tip" has_config_tip \
+    INPUT_PR_TITLE='feat: ok' INPUT_CHECK_TITLE=yes \
+    INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false
+
+# ── Release notes inside the summary table ───────────────────────────────────
+
+release_notes_row_counted() {
+    grep -qF '| Release Notes | ❌ Fail |' "$1" && grep -qF '**Result:** 0/1 checks passed' "$1" \
+        && grep -qF '**Release Notes** — add a heading' "$1"
+}
+
+run_summary_case "release notes failure is a counted table row with a tip" release_notes_row_counted \
+    INPUT_RELEASE_NOTES_OUTCOME=failure INPUT_CHECK_RELEASE_NOTES=true \
+    INPUT_CHECK_TITLE=false INPUT_CHECK_DESCRIPTION=false INPUT_CHECK_ISSUE_REFERENCE=false
+
+print_results "check_orchestrator" || exit 1

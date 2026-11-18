@@ -2,44 +2,53 @@
 set -euo pipefail
 
 # Validates that PR body or title references an issue. Supports GitHub issues
-# (#123, issue URLs) and Azure Boards work items (AB#12345).
+# (#123, owner/repo#123, issue URLs) and Azure Boards work items (AB#12345).
 # Inputs via env vars:
 #   INPUT_PR_TITLE                        - PR title (optional)
 #   INPUT_PR_BODY                         - PR body (optional)
 #   INPUT_ISSUE_REFERENCE_REQUIRE_KEYWORD - Only references preceded by a
 #                                           closing keyword count, e.g.
-#                                           "Fixes #123", "Closes AB#12345"
+#                                           "Fixes #123", "Closes AB#12345".
+#                                           Only the body is searched, as
+#                                           GitHub ignores keywords in titles
 #                                           (default: false)
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib.sh"
 
 TITLE="${INPUT_PR_TITLE:-}"
 BODY="${INPUT_PR_BODY:-}"
 REQUIRE_KEYWORD="${INPUT_ISSUE_REFERENCE_REQUIRE_KEYWORD:-false}"
-COMBINED="${TITLE} ${BODY}"
 
+WORD_START="(^|[^[:alnum:]_])"
+REF_START="(^|[^[:alnum:]_./#&-])"
+REF_END="([^[:alnum:]_]|$)"
 KEYWORDS="(close[sd]?|fix(e[sd])?|resolve[sd]?)"
-REF_PATTERN="(AB)?#[0-9]+"
-URL_PATTERN="https?://github\.com/[^/]+/[^/]+/issues/[0-9]+"
-KEYWORD_PATTERN="${KEYWORDS}[[:space:]]+(${REF_PATTERN}|${URL_PATTERN})"
+REF="(AB#|[[:alnum:]_.-]+/[[:alnum:]_.-]+#|#)[0-9]+"
+ISSUE_URL="https?://github\.com/[^/]+/[^/]+/issues/[0-9]+"
 
-# Here-strings, not `printf | grep -q`: grep -q exits on the first match, and
+KEYWORD_PATTERN="${WORD_START}${KEYWORDS}[[:space:]]+(${REF}|${ISSUE_URL})${REF_END}"
+BARE_REF_PATTERN="${REF_START}${REF}${REF_END}"
+
+# Here-string, not `printf | grep -q`: grep -q exits on the first match, and
 # under pipefail the writer's SIGPIPE on a body larger than the pipe buffer
 # would turn that match into a failure.
-if grep -qiE "$KEYWORD_PATTERN" <<< "$COMBINED"; then
+contains() {
+    grep -qiE "$2" <<< "$1"
+}
+
+if contains "$BODY" "$KEYWORD_PATTERN"; then
     echo "pass"
     exit 0
 fi
 
-if [[ "$REQUIRE_KEYWORD" == "true" ]]; then
-    echo "fail: no keyword issue reference found (expected e.g. 'Fixes #123', 'Closes AB#12345')"
+if is_true "$REQUIRE_KEYWORD" "issue-reference-require-keyword"; then
+    echo "fail: no keyword issue reference found in the description (expected e.g. 'Fixes #123', 'Closes AB#12345')"
     exit 1
 fi
 
-if grep -qiE "$REF_PATTERN" <<< "$COMBINED"; then
-    echo "pass"
-    exit 0
-fi
-
-if grep -qE "$URL_PATTERN" <<< "$COMBINED"; then
+TITLE_AND_BODY="${TITLE}"$'\n'"${BODY}"
+if contains "$TITLE_AND_BODY" "$BARE_REF_PATTERN" || contains "$TITLE_AND_BODY" "$ISSUE_URL"; then
     echo "pass"
     exit 0
 fi
