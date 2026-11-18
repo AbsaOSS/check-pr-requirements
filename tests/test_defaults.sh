@@ -48,6 +48,8 @@ assert_same_default "max-files-changed" "$DEFAULT_MAX_FILES_CHANGED"
 assert_same_default "allowed-target-branches" "$DEFAULT_ALLOWED_TARGET_BRANCHES"
 assert_same_default "release-notes-tag" "$DEFAULT_RELEASE_NOTES_TAG"
 assert_same_default "release-notes-skip-labels" "$DEFAULT_RELEASE_NOTES_SKIP_LABELS"
+assert_same_default "annotations" "$DEFAULT_ANNOTATIONS"
+assert_same_default "comment-on-failure" "$DEFAULT_COMMENT_ON_FAILURE"
 
 # Toggle defaults in the check.sh registry, e.g. "INPUT_CHECK_TITLE|true|..."
 while IFS='|' read -r env_var toggle_default _; do
