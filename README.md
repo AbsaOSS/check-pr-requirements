@@ -144,6 +144,10 @@ concurrency:
 4. Put non-trivial config defaults in `checks/defaults.sh` (`tests/test_defaults.sh` checks they match `action.yml`)
 5. Create `tests/test_my_check.sh` — `tests/run_tests.sh` picks up every `tests/test_*.sh` automatically
 
+## Releasing
+
+Run "Draft release" workflow to create a draft release. Review the proposed description and publish it.
+
 ## License
 
 Apache License 2.0 — see [LICENSE](LICENSE).
