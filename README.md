@@ -96,7 +96,8 @@ A check whose PR data is empty fails with a message naming the missing input.
 | `max-files-changed` | `50` | Maximum files changed |
 | `max-lines-changed` | *(empty = no limit)* | Maximum changed lines (additions + deletions); the size check fails if either limit is exceeded |
 | `required-labels` | *(empty = any label)* | Required label names, matched ignoring case, e.g. `bug,enhancement` |
-| `allowed-target-branches` | `main,master` | Allowed target branches; glob patterns supported (`main,support/*`) |
+| `allowed-target-branches` | repository default branch | Allowed target branches; glob patterns supported (`main,support/*`) |
+| `allow-stacked-prs` | `true` | Also allow a target branch that is the head of another open PR in the same stack (needs `pull-requests: read`) |
 | `annotations` | `true` | Emit an error (or warning) annotation per failed check, shown on the PR's Checks tab |
 | `comment-on-failure` | `true` | Keep one PR comment with the summary and "How to fix" while checks fail; delete it once they pass or are bypassed by `skip-actors`/`skip-labels`. Requires `pull-requests: write` and the `gh` CLI (preinstalled on GitHub-hosted runners); on fork PRs the `pull_request` token is read-only, so the comment is skipped. A failure to comment never fails the job; set `false` to opt out |
 | `skip-actors` | *(empty = no bypass)* | Comma-separated PR-author logins (ignoring case) that bypass **all** checks (needs `pr-author` wired), e.g. `dependabot[bot]` |

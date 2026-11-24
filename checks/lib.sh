@@ -77,6 +77,12 @@ is_true() {
     esac
 }
 
+# Allowed target branches: the explicit input, else the repository's default
+# branch, else the static fallback when the default branch is unknown.
+resolve_allowed_target_branches() {
+    echo "${INPUT_ALLOWED_TARGET_BRANCHES:-${INPUT_REPO_DEFAULT_BRANCH:-$DEFAULT_ALLOWED_TARGET_BRANCHES}}"
+}
+
 require_whole_number() {
     local value="$1" input_name="$2"
     if ! [[ "$value" =~ ^[0-9]+$ ]]; then

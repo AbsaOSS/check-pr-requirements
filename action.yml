@@ -49,7 +49,7 @@ inputs:
     required: false
     default: ${{ github.event.pull_request.user.login }}
   github-token:
-    description: "GitHub token for API access (used by the release notes check and comment-on-failure)"
+    description: "GitHub token for API access (used by the release notes check, stacked PR detection and comment-on-failure)"
     required: false
     default: ${{ github.token }}
 
@@ -157,9 +157,13 @@ inputs:
     required: false
     default: ""
   allowed-target-branches:
-    description: "Comma-separated list of allowed target branches; glob patterns supported, e.g. 'main,support/*'"
+    description: "Comma-separated list of allowed target branches; glob patterns supported, e.g. 'main,support/*'; empty = the repository's default branch"
     required: false
-    default: "main,master"
+    default: ""
+  allow-stacked-prs:
+    description: "Also allow a target branch that is the head of another open PR in the same stack, so stacked PRs pass the target branch check"
+    required: false
+    default: "true"
   annotations:
     description: "Emit an error/warning annotation per failed check, shown in the PR checks UI"
     required: false
@@ -264,6 +268,8 @@ runs:
         INPUT_SKIP_LABELS: ${{ inputs.skip-labels }}
         INPUT_ANNOTATIONS: ${{ inputs.annotations }}
         INPUT_COMMENT_ON_FAILURE: ${{ inputs.comment-on-failure }}
+        GH_TOKEN: ${{ inputs.github-token }}
+        INPUT_PR_NUMBER: ${{ inputs.pr-number }}
         INPUT_TARGET_BRANCH: ${{ inputs.target-branch }}
         INPUT_FILES_CHANGED: ${{ inputs.files-changed }}
         INPUT_ADDITIONS: ${{ inputs.additions }}
@@ -295,6 +301,8 @@ runs:
         INPUT_MAX_LINES_CHANGED: ${{ inputs.max-lines-changed }}
         INPUT_REQUIRED_LABELS: ${{ inputs.required-labels }}
         INPUT_ALLOWED_TARGET_BRANCHES: ${{ inputs.allowed-target-branches }}
+        INPUT_REPO_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        INPUT_ALLOW_STACKED_PRS: ${{ inputs.allow-stacked-prs }}
         INPUT_WARN_CHECKS: ${{ inputs.warn-checks }}
         INPUT_RELEASE_NOTES_TAG: ${{ inputs.release-notes-tag }}
         INPUT_RELEASE_NOTES_SKIP_LABELS: ${{ inputs.release-notes-skip-labels }}
