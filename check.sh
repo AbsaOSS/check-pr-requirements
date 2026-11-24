@@ -181,7 +181,7 @@ remediation_for() {
                 echo "- **Label Presence** — add at least one label to the PR."
             fi ;;
         "Target Branch")
-            targets="${INPUT_ALLOWED_TARGET_BRANCHES:-$DEFAULT_ALLOWED_TARGET_BRANCHES}"
+            targets="$(resolve_allowed_target_branches)"
             echo "- **Target Branch** — retarget the PR to an allowed branch: $(code "$targets" "main, master")." ;;
         "Release Notes")
             echo "- **Release Notes** — add a heading matching $(code "${INPUT_RELEASE_NOTES_TAG:-$DEFAULT_RELEASE_NOTES_TAG}" -) followed directly by a bullet list, e.g. \`- Added retry logic\`."

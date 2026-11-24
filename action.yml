@@ -157,9 +157,13 @@ inputs:
     required: false
     default: ""
   allowed-target-branches:
-    description: "Comma-separated list of allowed target branches; glob patterns supported, e.g. 'main,support/*'"
+    description: "Comma-separated list of allowed target branches; glob patterns supported, e.g. 'main,support/*'; empty = the repository's default branch"
     required: false
-    default: "main,master"
+    default: ""
+  allow-stacked-prs:
+    description: "Also allow a target branch matching branch-pattern, so stacked PRs targeting the layer below pass the target branch check"
+    required: false
+    default: "false"
   annotations:
     description: "Emit an error/warning annotation per failed check, shown in the PR checks UI"
     required: false
@@ -295,6 +299,8 @@ runs:
         INPUT_MAX_LINES_CHANGED: ${{ inputs.max-lines-changed }}
         INPUT_REQUIRED_LABELS: ${{ inputs.required-labels }}
         INPUT_ALLOWED_TARGET_BRANCHES: ${{ inputs.allowed-target-branches }}
+        INPUT_REPO_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        INPUT_ALLOW_STACKED_PRS: ${{ inputs.allow-stacked-prs }}
         INPUT_WARN_CHECKS: ${{ inputs.warn-checks }}
         INPUT_RELEASE_NOTES_TAG: ${{ inputs.release-notes-tag }}
         INPUT_RELEASE_NOTES_SKIP_LABELS: ${{ inputs.release-notes-skip-labels }}
