@@ -59,16 +59,46 @@ INPUT_TARGET_BRANCH="support" INPUT_ALLOWED_TARGET_BRANCHES="support/*" \
 
 # ── Stacked PRs ──────────────────────────────────────────────────────────────
 
-INPUT_TARGET_BRANCH="feature/layer-1" INPUT_ALLOW_STACKED_PRS="true" \
-    assert_pass "stacked PR targets branch matching branch-pattern" "$CHECK"
+# A fake gh answering the stacks lookup with INPUT_STUB_STACKS_RESPONSE (exit 1 when unset).
+STUB_DIR="$(mktemp -d)"
+cat > "${STUB_DIR}/gh" <<'STUB'
+#!/usr/bin/env bash
+[[ -n "${INPUT_STUB_STACKS_RESPONSE:-}" ]] || exit 1
+echo "$INPUT_STUB_STACKS_RESPONSE"
+STUB
+chmod +x "${STUB_DIR}/gh"
+PATH="${STUB_DIR}:$PATH"
 
-INPUT_TARGET_BRANCH="feature/layer-1" INPUT_ALLOW_STACKED_PRS="false" \
-    assert_fail "stacked PRs disabled rejects pattern-matching target" "$CHECK"
+STACK_WITH_LAYER_BELOW='[{"pull_requests":[
+  {"number":10,"state":"open","head":{"ref":"feature/layer-1"}},
+  {"number":11,"state":"open","head":{"ref":"feature/layer-2"}}]}]'
 
-INPUT_TARGET_BRANCH="develop" INPUT_ALLOW_STACKED_PRS="true" \
-    assert_fail "stacked PRs still reject non-matching target" "$CHECK"
+stacked_pr() {
+    INPUT_TARGET_BRANCH="feature/layer-1" INPUT_PR_NUMBER="11" GITHUB_REPOSITORY="org/repo" "$@"
+}
 
-INPUT_TARGET_BRANCH="my-base" INPUT_ALLOW_STACKED_PRS="true" INPUT_BRANCH_PATTERN="^my-" \
-    assert_pass "stacked PRs honour custom branch-pattern" "$CHECK"
+INPUT_STUB_STACKS_RESPONSE="$STACK_WITH_LAYER_BELOW" stacked_pr \
+    assert_pass "PR targeting the head of the open PR below it in its stack" "$CHECK"
+
+INPUT_STUB_STACKS_RESPONSE="$STACK_WITH_LAYER_BELOW" INPUT_ALLOW_STACKED_PRS="false" stacked_pr \
+    assert_fail "stacked PRs disabled rejects the layer below" "$CHECK"
+
+INPUT_STUB_STACKS_RESPONSE="[]" stacked_pr \
+    assert_fail "PR not in any stack is rejected" "$CHECK"
+
+INPUT_STUB_STACKS_RESPONSE="$STACK_WITH_LAYER_BELOW" INPUT_TARGET_BRANCH="develop" INPUT_PR_NUMBER="11" GITHUB_REPOSITORY="org/repo" \
+    assert_fail "stacked PR targeting a branch outside its stack is rejected" "$CHECK"
+
+INPUT_STUB_STACKS_RESPONSE='[{"pull_requests":[{"number":10,"state":"closed","head":{"ref":"feature/layer-1"}},{"number":11,"state":"open","head":{"ref":"feature/layer-2"}}]}]' stacked_pr \
+    assert_fail "closed PR below does not count" "$CHECK"
+
+INPUT_STUB_STACKS_RESPONSE='[{"pull_requests":[{"number":11,"state":"open","head":{"ref":"feature/layer-1"}}]}]' stacked_pr \
+    assert_fail "PR's own head does not count as the layer below" "$CHECK"
+
+stacked_pr \
+    assert_fail "failed stacks lookup is rejected" "$CHECK"
+
+INPUT_TARGET_BRANCH="feature/layer-1" GITHUB_REPOSITORY="org/repo" INPUT_STUB_STACKS_RESPONSE="$STACK_WITH_LAYER_BELOW" \
+    assert_fail "missing PR number is rejected" "$CHECK"
 
 print_results "target_branch" || exit 1

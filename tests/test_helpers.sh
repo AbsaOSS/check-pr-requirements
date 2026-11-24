@@ -11,7 +11,7 @@ _run_script() {
         env_args+=("$v=${!v}")
     done
     # Run with clean INPUT_ env: only vars from this test case, not leaked from prior ones
-    env -i "${env_args[@]}" PATH="$PATH" HOME="$HOME" \
+    env -i "${env_args[@]}" PATH="$PATH" HOME="$HOME" GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-}" \
         GITHUB_STEP_SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/null}" \
         GITHUB_OUTPUT="${GITHUB_OUTPUT:-/dev/null}" \
         bash "$script" 2>&1
